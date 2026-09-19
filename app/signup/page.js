@@ -24,7 +24,7 @@ export default function SignupPage() {
       const data = await response.json();
 
       if (!response.ok) throw new Error(data.error || "Unable to create your account.");
-      router.push("/dashboard");
+      router.push("/report-dashboard");
     } catch (submitError) {
       setError(submitError.message);
     } finally {
