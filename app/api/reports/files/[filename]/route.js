@@ -26,7 +26,13 @@ export async function GET(request, { params }) {
       : path.join(process.cwd(), "public", "uploads");
     const file = await readFile(path.join(root, filename));
     const extension = path.extname(filename).slice(1).toLowerCase();
-    return new Response(file, { headers: { "Content-Type": CONTENT_TYPES[extension] || "application/octet-stream", "Cache-Control": "private, no-store" } });
+    return new Response(file, {
+      headers: {
+        "Content-Type": CONTENT_TYPES[extension] || "application/octet-stream",
+        "Cache-Control": "private, no-store, max-age=0, must-revalidate",
+        Vary: "Cookie, Authorization",
+      },
+    });
   } catch (error) {
     console.error("[GET /api/reports/files/:filename]", error.message);
     return NextResponse.json({ error: "Unable to load file." }, { status: 404 });

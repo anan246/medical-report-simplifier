@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import User from "@/models/User";
 import { getAuthenticatedUser } from "@/lib/auth";
+import { privateJson } from "@/lib/apiResponse";
 
 const LANGUAGES = ["en", "hi", "kn"];
 const THEMES = ["light", "dark", "system"];
@@ -43,7 +44,7 @@ export async function GET(request) {
     await connectDB();
     const user = await User.findOne({ userId: authUser.userId }).select("-passwordHash").lean();
     if (!user) return NextResponse.json({ error: "User not found." }, { status: 404 });
-    return NextResponse.json({ user: serializeUser(user) });
+    return privateJson({ user: serializeUser(user) });
   } catch (error) {
     console.error("[GET /api/settings]", error.message);
     return NextResponse.json({ error: "Unable to load settings." }, { status: 500 });

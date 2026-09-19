@@ -3,13 +3,41 @@ import { connectDB } from "../../../../../lib/mongodb";
 import Report from "../../../../../models/Report";
 import { normalizeReport } from "../../../../../lib/reportAdapter";
 import { getAuthenticatedUser } from "../../../../../lib/auth";
+import { privateJson } from "../../../../../lib/apiResponse";
+import { generateWithFallback, getGenAI, isQuotaError } from "../../../../../services/geminiService";
 
-async function getGeminiModel() {
-  const { GoogleGenerativeAI } = await import("@google/generative-ai");
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error("GEMINI_API_KEY is not configured.");
-  const genAI = new GoogleGenerativeAI(apiKey);
-  return genAI.getGenerativeModel({ model: "gemini-3.6-flash" });
+/**
+ * Turns the model's reply into the four explanation fields. JSON mode is requested, but
+ * a stray code fence or plain-text reply is still handled instead of failing.
+ */
+function parseExplanation(raw) {
+  const jsonText = String(raw || "")
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/, "")
+    .trim();
+
+  let parsed = null;
+  try {
+    parsed = JSON.parse(jsonText);
+  } catch {
+    parsed = null;
+  }
+
+  const asText = (value) => (typeof value === "string" ? value.trim() : "");
+
+  if (!parsed || typeof parsed !== "object") {
+    return jsonText ? { summary: jsonText, whatItMeasures: "", resultMeaning: "", referenceRangeNote: "" } : null;
+  }
+
+  const explanation = {
+    summary: asText(parsed.summary),
+    whatItMeasures: asText(parsed.whatItMeasures),
+    resultMeaning: asText(parsed.resultMeaning),
+    referenceRangeNote: asText(parsed.referenceRangeNote),
+  };
+  if (!explanation.summary) explanation.summary = jsonText;
+
+  return explanation.summary ? explanation : null;
 }
 
 function buildPrompt(test, reportName) {
@@ -88,25 +116,26 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: "Test not found." }, { status: 404 });
     }
 
-    const model = await getGeminiModel();
-    const result = await model.generateContent(buildPrompt(test, report.reportName));
-    const raw = result.response.text().trim();
+    const result = await generateWithFallback(getGenAI(), buildPrompt(test, report.reportName), {
+      temperature: 0.3,
+      responseMimeType: "application/json",
+    });
 
-    const jsonText = raw
-      .replace(/^```(?:json)?\s*/i, "")
-      .replace(/\s*```$/, "")
-      .trim();
+    const explanation = parseExplanation(result.response.text());
+    if (!explanation) throw new Error("The AI returned an empty explanation.");
 
-    let explanation;
-    try {
-      explanation = JSON.parse(jsonText);
-    } catch {
-      explanation = { summary: raw, whatItMeasures: "", resultMeaning: "", referenceRangeNote: "" };
-    }
-
-    return NextResponse.json({ explanation });
+    return privateJson({ explanation });
   } catch (err) {
     console.error("[POST /api/reports/:id/explain]", err.message);
-    return NextResponse.json({ error: "Failed to generate explanation." }, { status: 500 });
+    if (isQuotaError(err?.message)) {
+      return NextResponse.json(
+        { error: "The AI service is rate-limited right now. Please try again in a moment." },
+        { status: 429 },
+      );
+    }
+    return NextResponse.json(
+      { error: "Failed to generate the explanation. Please try again." },
+      { status: 502 },
+    );
   }
 }

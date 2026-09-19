@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/mongodb";
 import Report from "@/models/Report";
 import { normalizeReportSummary } from "@/lib/reportAdapter";
 import { getAuthenticatedUser } from "@/lib/auth";
+import { privateJson } from "@/lib/apiResponse";
 
 export async function GET(request) {
   try {
@@ -22,7 +23,7 @@ export async function GET(request) {
 
     const reports = docs.map(normalizeReportSummary).filter(Boolean);
 
-    return NextResponse.json(reports, { status: 200 });
+    return privateJson(reports, { status: 200 });
   } catch (error) {
     console.error("[GET /api/reports]", error);
 

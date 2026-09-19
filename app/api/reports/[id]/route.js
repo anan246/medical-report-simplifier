@@ -3,6 +3,7 @@ import { connectDB } from "../../../../lib/mongodb";
 import Report from "../../../../models/Report";
 import { normalizeReport } from "../../../../lib/reportAdapter";
 import { getAuthenticatedUser } from "../../../../lib/auth";
+import { privateJson } from "../../../../lib/apiResponse";
 
 export async function GET(request, { params }) {
   const { id } = await params;
@@ -28,7 +29,7 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: "Report not found." }, { status: 404 });
     }
 
-    return NextResponse.json(normalizeReport(doc));
+    return privateJson(normalizeReport(doc));
   } catch (err) {
     console.error("[GET /api/reports/:id]", err.message);
     return NextResponse.json({ error: "Failed to load report." }, { status: 500 });

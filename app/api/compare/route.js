@@ -14,6 +14,7 @@ import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import Report from "@/models/Report";
 import { getAuthenticatedUser } from "@/lib/auth";
+import { privateJson } from "@/lib/apiResponse";
 
 /**
  * Align two report's test arrays and compute deltas + trends.
@@ -117,7 +118,7 @@ const findReport = async (id) => {
 
     const comparison = buildComparison(reportA, reportB);
 
-    return NextResponse.json({
+    return privateJson({
       reportA: { ...reportA, userId: undefined, fileUrl: undefined },
       reportB: { ...reportB, userId: undefined, fileUrl: undefined },
       comparison,

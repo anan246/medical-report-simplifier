@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "verify:isolation": "node scripts/verify-report-isolation.mjs",
+    "purge:samples": "node scripts/purge-sample-reports.mjs"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

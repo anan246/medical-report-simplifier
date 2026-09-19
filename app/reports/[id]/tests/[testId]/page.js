@@ -69,24 +69,30 @@ function ExplanationSection({ reportId, testId }) {
   const { language } = useTheme();
   const [aiStatus, setAiStatus] = useState("idle"); // idle | loading | ok | error
   const [explanation, setExplanation] = useState(null);
+  const [aiError, setAiError] = useState("");
 
   const fetchExplanation = useCallback(async () => {
     setAiStatus("loading");
     setExplanation(null);
+    setAiError("");
     try {
       const res = await fetch(`/api/reports/${reportId}/explain`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        cache: "no-store",
         body: JSON.stringify({ testId }),
       });
-      if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.explanation) {
+        setAiError(data?.error || "We couldn't generate the explanation right now.");
         setAiStatus("error");
         return;
       }
-      const data = await res.json();
       setExplanation(data.explanation);
       setAiStatus("ok");
-    } catch {
+    } catch (err) {
+      setAiError(err?.message || "We couldn't generate the explanation right now.");
       setAiStatus("error");
     }
   }, [reportId, testId]);
@@ -138,8 +144,8 @@ function ExplanationSection({ reportId, testId }) {
         <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
           AI Explanation
         </h3>
-        <p className="text-sm text-slate-600 dark:text-slate-300">
-          We couldn&apos;t generate the explanation right now.
+        <p className="text-sm text-slate-600 dark:text-slate-300" role="alert">
+          {aiError || "We couldn't generate the explanation right now."}
         </p>
         <button
           onClick={fetchExplanation}

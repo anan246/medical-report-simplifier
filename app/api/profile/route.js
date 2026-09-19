@@ -1,5 +1,6 @@
 import connectDB from "@/lib/mongodb";
 import { getAuthenticatedUser } from "@/lib/auth";
+import { privateJson } from "@/lib/apiResponse";
 
 export async function GET(request) {
   if (!getAuthenticatedUser(request)) {
@@ -8,7 +9,7 @@ export async function GET(request) {
   try {
     await connectDB();
 
-    return Response.json({
+    return privateJson({
       success: true,
       message: "MongoDB connected successfully!",
     });
