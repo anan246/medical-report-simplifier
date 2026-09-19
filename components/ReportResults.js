@@ -39,9 +39,7 @@ export default function ReportResults({ report }) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
-  if (!report) return null;
-
-  const tests = report.tests || [];
+  const tests = useMemo(() => report?.tests ?? [], [report]);
   const normalCount = tests.filter((t) => t.status === "normal").length;
   const aboveCount = tests.filter((t) => t.status === "above_range").length;
   const belowCount = tests.filter((t) => t.status === "below_range").length;
@@ -54,6 +52,8 @@ export default function ReportResults({ report }) {
       return matchesSearch && matchesStatus;
     });
   }, [tests, search, statusFilter]);
+
+  if (!report) return null;
 
   const filterButtons = [
     { key: "all", label: `All (${tests.length})` },

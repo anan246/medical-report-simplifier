@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
+import Image from "next/image";
 import ProcessingScreen from "@/components/ProcessingScreen";
 import ReportResults from "@/components/ReportResults";
 
@@ -296,7 +297,9 @@ export default function UploadPage() {
                     {/* Image preview */}
                     {previewUrl && (
                       <div className="border-t border-slate-200 dark:border-slate-700">
-                        <img src={previewUrl} alt="Report preview" className="w-full max-h-56 object-contain bg-white dark:bg-slate-900" />
+                        <div className="relative w-full h-56 bg-white dark:bg-slate-900">
+                          <Image src={previewUrl} alt="Report preview" fill className="object-contain" />
+                        </div>
                       </div>
                     )}
 
