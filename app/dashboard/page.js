@@ -1,11 +1,6 @@
-import Navbar from "@/components/Navbar";
-
 export default function DashboardPage() {
   return (
     <main className="min-h-screen bg-[#f7fbf8] dark:bg-slate-950">
-
-      <Navbar />
-
       <section className="max-w-7xl mx-auto px-6 py-12">
 
         <div>

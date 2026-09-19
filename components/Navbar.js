@@ -1,13 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 
 export default function Navbar() {
+  const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+
+  if (pathname === "/login" || pathname === "/signup") {
+    return null;
+  }
 
   async function handleLogout() {
     setLoggingOut(true);
@@ -46,7 +51,7 @@ export default function Navbar() {
             Dashboard
           </NavLink>
 
-          <NavLink href="/reports">
+          <NavLink href="/report-dashboard">
             Reports
           </NavLink>
 
