@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { startTransition, useState, useMemo, useEffect } from "react";
 import ReadAloud from "@/components/ReadAloud";
 import { useTheme } from "@/components/ThemeProvider";
 import { getT } from "@/lib/i18n";
@@ -43,6 +43,31 @@ export default function ReportResults({ report }) {
   const t = getT(language);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [translatedSummary, setTranslatedSummary] = useState("");
+  const [translationLoading, setTranslationLoading] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!report?.aiSummary || language === "en") {
+      startTransition(() => setTranslatedSummary(""));
+      return undefined;
+    }
+    startTransition(() => setTranslationLoading(true));
+    fetch("/api/voice/translate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: report.aiSummary, language }),
+    }).then(async (response) => {
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Translation failed");
+      if (!cancelled) startTransition(() => setTranslatedSummary(data.translatedText || ""));
+    }).catch(() => {
+      if (!cancelled) startTransition(() => setTranslatedSummary(""));
+    }).finally(() => {
+      if (!cancelled) startTransition(() => setTranslationLoading(false));
+    });
+    return () => { cancelled = true; };
+  }, [report?.aiSummary, language]);
 
   const STATUS_CONFIG = {
     normal:      { label: t.results.statusLabels.normal,      className: "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800", dot: "bg-emerald-500" },
@@ -118,9 +143,9 @@ export default function ReportResults({ report }) {
               Report Summary
             </p>
             <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-line">
-              {report.aiSummary}
+              {translationLoading ? "Translating summary..." : translatedSummary || report.aiSummary}
             </p>
-            <ReadAloud text={report.aiSummary} language={language} />
+            <ReadAloud text={translatedSummary || report.aiSummary} language={translatedSummary ? language : "en"} />
             <p className="mt-3 text-xs text-slate-400 dark:text-slate-500 italic">
               Information summary only — not a medical diagnosis or advice. Consult a qualified healthcare professional.
             </p>

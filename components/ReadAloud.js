@@ -5,6 +5,7 @@ import { getSpeechLocale, getTranslations } from "@/lib/i18n";
 
 export default function ReadAloud({ text, language = "en", rate = 1, className = "" }) {
   const [state, setState] = useState("idle");
+  const [error, setError] = useState("");
   const [spokenText, setSpokenText] = useState("");
   const utteranceRef = useRef(null);
   const t = getTranslations(language);
@@ -27,22 +28,63 @@ export default function ReadAloud({ text, language = "en", rate = 1, className =
   }
 
   async function start(restart = false) {
-    if (!text || typeof window === "undefined" || !window.speechSynthesis) return;
+    if (!text || typeof window === "undefined" || !window.speechSynthesis || !window.SpeechSynthesisUtterance) {
+      setError("Speech playback is not supported in this browser.");
+      return;
+    }
     window.speechSynthesis.cancel();
+    window.speechSynthesis.resume();
     setState("loading");
+    setError("");
     try {
       const nextText = restart && spokenText ? spokenText : await getTextForSpeech();
       setSpokenText(nextText);
-      const utterance = new SpeechSynthesisUtterance(nextText);
-      utterance.lang = getSpeechLocale(language);
-      utterance.rate = rate;
-      utterance.onstart = () => setState("playing");
-      utterance.onend = () => setState("idle");
-      utterance.onerror = () => setState("idle");
-      utteranceRef.current = utterance;
-      window.speechSynthesis.speak(utterance);
-    } catch {
+      const locale = getSpeechLocale(language);
+      let voices = window.speechSynthesis.getVoices();
+      if (voices.length === 0) {
+        voices = await new Promise((resolve) => {
+          let settled = false;
+          const finish = () => {
+            if (settled) return;
+            settled = true;
+            window.speechSynthesis.removeEventListener("voiceschanged", finish);
+            resolve(window.speechSynthesis.getVoices());
+          };
+          window.speechSynthesis.addEventListener("voiceschanged", finish, { once: true });
+          window.setTimeout(finish, 1500);
+        });
+      }
+      if (voices.length === 0) {
+        setState("idle");
+        setError("No browser voices are available. Install or enable a text-to-speech voice in your device settings.");
+        return;
+      }
+      const voice = voices.find((item) => item.lang?.toLowerCase() === locale.toLowerCase())
+        || voices.find((item) => item.lang?.toLowerCase().startsWith(language.toLowerCase()));
+      const chunks = nextText.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [nextText];
+      let index = 0;
+      const speakNext = () => {
+        if (index >= chunks.length) {
+          setState("idle");
+          return;
+        }
+        const utterance = new SpeechSynthesisUtterance(chunks[index++].trim());
+        utterance.lang = locale;
+        utterance.rate = rate;
+        if (voice) utterance.voice = voice;
+        utterance.onstart = () => setState("playing");
+        utterance.onend = speakNext;
+        utterance.onerror = (event) => {
+          setState("idle");
+          setError(event.error === "not-allowed" ? "Browser audio permission was blocked." : "This browser could not play the selected language voice.");
+        };
+        utteranceRef.current = utterance;
+        window.speechSynthesis.speak(utterance);
+      };
+      speakNext();
+    } catch (playbackError) {
       setState("idle");
+      setError(playbackError.message || "Unable to prepare audio.");
     }
   }
 
@@ -84,6 +126,7 @@ export default function ReadAloud({ text, language = "en", rate = 1, className =
           <button type="button" onClick={stop} aria-label={t.stop} className="rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300">⏹ {t.stop}</button>
         </>
       )}
+      {error && <span role="status" className="text-xs text-rose-600 dark:text-rose-400">{error}</span>}
     </div>
   );
 }
