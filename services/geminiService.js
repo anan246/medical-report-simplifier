@@ -121,7 +121,7 @@ export async function extractMedicalReport(filePath, mimeType, reportText) {
     // For images: send the raw image bytes — do NOT set responseMimeType
     // as it conflicts with multimodal (vision) requests in the SDK.
     const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.5-flash",
       generationConfig: { temperature: 0.1 },
     });
     const imageBuffer = await readFile(filePath);
@@ -133,7 +133,7 @@ export async function extractMedicalReport(filePath, mimeType, reportText) {
   } else {
     // For PDFs: send extracted text with JSON response mode
     const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.5-flash",
       generationConfig: {
         temperature: 0.1,
         responseMimeType: "application/json",

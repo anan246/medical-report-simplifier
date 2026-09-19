@@ -52,6 +52,16 @@ export default function Navbar() {
           >
             Upload Report
           </Link>
+          <Link
+            href="/report-dashboard"
+            className={`px-4 py-2 rounded-lg text-sm font-medium ${
+              pathname === "/report-dashboard"
+                ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
+            }`}
+          >
+            My Reports
+          </Link>
         </nav>
 
         {/* Right side */}

@@ -1,14 +1,17 @@
 import { NextResponse } from "next/server";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { connectDB } from "../../../../../lib/mongodb";
 import Report from "../../../../../models/Report";
 import { normalizeReport } from "../../../../../lib/reportAdapter";
 
-async function getGeminiModel() {
-  const { GoogleGenerativeAI } = await import("@google/generative-ai");
+function getGeminiModel() {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("GEMINI_API_KEY is not configured.");
   const genAI = new GoogleGenerativeAI(apiKey);
-  return genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  return genAI.getGenerativeModel({
+    model: "gemini-3.5-flash",
+    generationConfig: { temperature: 0.1 },
+  });
 }
 
 function buildPrompt(test, reportName) {
@@ -82,7 +85,7 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: "Test not found." }, { status: 404 });
     }
 
-    const model = await getGeminiModel();
+    const model = getGeminiModel();
     const result = await model.generateContent(buildPrompt(test, report.reportName));
     const raw = result.response.text().trim();
 
