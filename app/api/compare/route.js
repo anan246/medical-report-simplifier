@@ -11,8 +11,8 @@
  */
 
 import { NextResponse } from "next/server";
-import { ObjectId } from "mongodb";
-import clientPromise from "@/lib/mongodb";
+import { connectDB } from "@/lib/mongodb";
+import Report from "@/models/Report";
 
 /**
  * Align two report's test arrays and compute deltas + trends.
@@ -89,17 +89,11 @@ export async function GET(request) {
   }
 
   try {
-    const client = await clientPromise;
-    const reports = client.db().collection("reports");
+   await connectDB();
 
-    // History uses the application reportId. Also accept Mongo _id for older records.
-    const findReport = async (id) => {
-      const query = [{ reportId: id }];
-      if (ObjectId.isValid(id)) {
-        query.push({ _id: new ObjectId(id) });
-      }
-      return reports.findOne({ $or: query });
-    };
+const findReport = async (id) => {
+  return Report.findOne({ reportId: id }).lean();
+};
 
     const [reportA, reportB] = await Promise.all([
       findReport(idA),
