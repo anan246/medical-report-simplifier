@@ -51,20 +51,22 @@ export async function POST(request) {
 
     // Extract text content from file
     let reportText = "";
-    try {
-      reportText = await extractTextFromFile(absolutePath, mimeType);
-    } catch (err) {
-      console.error("[analyze] text extraction error:", err.message);
-      return NextResponse.json(
-        { success: false, message: `Content extraction failed: ${err.message}` },
-        { status: 422 }
-      );
+    if (mimeType !== "application/pdf") {
+      try {
+        reportText = await extractTextFromFile(absolutePath, mimeType);
+      } catch (err) {
+        console.error("[analyze] text extraction error:", err.message);
+        return NextResponse.json(
+          { success: false, message: `Content extraction failed: ${err.message}` },
+          { status: 422 }
+        );
+      }
     }
 
     console.log("[analyze] extracted text length:", reportText.length);
     console.log("[analyze] text preview:", reportText.slice(0, 300));
 
-    if (!reportText || reportText.trim().length < 20) {
+    if (mimeType !== "application/pdf" && (!reportText || reportText.trim().length < 20)) {
       return NextResponse.json(
         { success: false, message: "Could not extract readable text from this PDF. It may be a scanned/image-based PDF. Please upload a PNG or JPG instead." },
         { status: 422 }

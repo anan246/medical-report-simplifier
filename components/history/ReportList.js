@@ -97,7 +97,16 @@ export default function ReportList() {
   useEffect(() => {
     getReports()
       .then((data) => {
-        const sorted = [...data].sort(
+        const usedIds = new Set();
+        const normalised = (Array.isArray(data) ? data : []).map((report, index) => {
+          const baseId = report?.reportId ?? report?.id ?? report?._id ?? `report-${report?.reportDate ?? "unknown"}-${index}`;
+          let reportId = String(baseId);
+          let suffix = 1;
+          while (usedIds.has(reportId)) reportId = `${baseId}-${suffix++}`;
+          usedIds.add(reportId);
+          return { ...report, reportId };
+        });
+        const sorted = normalised.sort(
           (a, b) => new Date(b.reportDate) - new Date(a.reportDate)
         );
         setReports(sorted);
@@ -120,13 +129,13 @@ export default function ReportList() {
     }
   }
 
-  const allTypes = [...new Set(reports.map((r) => r.reportType))];
+  const allTypes = [...new Set(reports.map((r) => r.reportType).filter(Boolean))];
 
   const filtered = reports.filter((r) => {
     const matchSearch =
       !search ||
-      r.reportName.toLowerCase().includes(search.toLowerCase()) ||
-      r.reportType.toLowerCase().includes(search.toLowerCase());
+      String(r.reportName ?? "").toLowerCase().includes(search.toLowerCase()) ||
+      String(r.reportType ?? "").toLowerCase().includes(search.toLowerCase());
     const matchType = !typeFilter || r.reportType === typeFilter;
     return matchSearch && matchType;
   });

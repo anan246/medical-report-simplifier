@@ -11,6 +11,8 @@ const STATUS_CONFIG = {
   low:      { label: "Low",      classes: "bg-amber-100  text-amber-700  dark:bg-amber-900/40  dark:text-amber-300  ring-1 ring-amber-200  dark:ring-amber-700"  },
   high:     { label: "High",     classes: "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300 ring-1 ring-orange-200 dark:ring-orange-700" },
   critical: { label: "Critical", classes: "bg-red-100    text-red-700    dark:bg-red-900/40    dark:text-red-300    ring-1 ring-red-200    dark:ring-red-700"    },
+  above_range: { label: "Above Range", classes: "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300 ring-1 ring-orange-200 dark:ring-orange-700" },
+  below_range: { label: "Below Range", classes: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 ring-1 ring-amber-200 dark:ring-amber-700" },
 };
 
 /**
@@ -18,7 +20,7 @@ const STATUS_CONFIG = {
  * Picks the worst status: critical > high > low > normal.
  */
 function deriveOverallStatus(tests) {
-  const priority = ["critical", "high", "low", "normal"];
+  const priority = ["critical", "high", "above_range", "low", "below_range", "normal"];
   for (const p of priority) {
     if (tests.some((t) => t.status === p)) return p;
   }
@@ -40,10 +42,11 @@ export default function ReportCard({
 }) {
   const [expanded, setExpanded] = useState(false);
 
-  const overall = deriveOverallStatus(report.tests);
+  const tests = Array.isArray(report?.tests) ? report.tests : [];
+  const overall = deriveOverallStatus(tests);
   const statusCfg = STATUS_CONFIG[overall] ?? STATUS_CONFIG.normal;
-  const testCount = report.tests.length;
-  const abnormalCount = report.tests.filter(
+  const testCount = tests.length;
+  const abnormalCount = tests.filter(
     (t) => t.status && t.status !== "normal"
   ).length;
 

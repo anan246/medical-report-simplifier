@@ -11,12 +11,19 @@ const ThemeContext = createContext({
 });
 
 export function useTheme() {
-  return useContext(ThemeContext);
+  return useContext(AppContext);
+}
+
+export function useLanguage() {
+  const { language, setLanguage } = useContext(AppContext);
+  return { language, setLanguage, languages: LANGUAGES };
+}
+
+export function useAppContext() {
+  return useContext(AppContext);
 }
 
 export default function ThemeProvider({ children }) {
-  // Read the theme synchronously on first render (client only).
-  // useLayoutEffect + useRef lets us apply the class without setState in an effect.
   const [theme, setTheme] = useState("light");
   const [language, setLanguageState] = useState("en");
   const initialised = useRef(false);
@@ -55,9 +62,16 @@ export default function ThemeProvider({ children }) {
     localStorage.setItem("medilens-language", next);
   }, []);
 
+  function setLanguage(code) {
+    setLanguageSt(code);
+    localStorage.setItem("medilens-language", code);
+  }
+
+  if (!mounted) return <>{children}</>;
+
   return (
     <ThemeContext.Provider value={{ theme, setThemePreference, toggleTheme, language, setLanguage }}>
       {children}
-    </ThemeContext.Provider>
+    </AppContext.Provider>
   );
 }
