@@ -3,12 +3,37 @@ import { v4 as uuidv4 } from "uuid";
 import { readFile } from "fs/promises";
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const PRIMARY_MODEL = process.env.GEMINI_MODEL || "gemini-3.6-flash";
+const FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || "gemini-3.5-flash-lite";
 
 // Don't throw at module load — throw lazily inside the function so the
 // server starts even without the key (other routes still work).
 function getGenAI() {
   if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not defined in environment variables");
   return new GoogleGenerativeAI(GEMINI_API_KEY);
+}
+
+async function generateWithFallback(genAI, content, generationConfig) {
+  const models = [...new Set([PRIMARY_MODEL, FALLBACK_MODEL])];
+  let lastError;
+
+  for (const modelName of models) {
+    const model = genAI.getGenerativeModel({ model: modelName, generationConfig });
+
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        return await model.generateContent(content);
+      } catch (error) {
+        lastError = error;
+        const message = String(error?.message || "");
+        const isTransient = /\b(429|500|502|503|504)\b|high demand|unavailable|overloaded/i.test(message);
+        if (!isTransient || attempt === 1) break;
+        await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)));
+      }
+    }
+  }
+
+  throw lastError;
 }
 
 const EXTRACTION_PROMPT = `You are a medical laboratory report data extraction engine. Your job is to read the COMPLETE medical report provided and extract EVERY test result present.
@@ -117,30 +142,22 @@ export async function extractMedicalReport(filePath, mimeType, reportText) {
 
   let result;
 
-  if (mimeType.startsWith("image/")) {
+  if (mimeType.startsWith("image/") || mimeType === "application/pdf") {
     // For images: send the raw image bytes — do NOT set responseMimeType
     // as it conflicts with multimodal (vision) requests in the SDK.
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
-      generationConfig: { temperature: 0.1 },
-    });
     const imageBuffer = await readFile(filePath);
     const base64 = imageBuffer.toString("base64");
-    result = await model.generateContent([
+    result = await generateWithFallback(genAI, [
       EXTRACTION_PROMPT,
       { inlineData: { mimeType, data: base64 } },
-    ]);
+    ], { temperature: 0.1 });
   } else {
     // For PDFs: send extracted text with JSON response mode
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
-      generationConfig: {
-        temperature: 0.1,
-        responseMimeType: "application/json",
-      },
-    });
     const prompt = `${EXTRACTION_PROMPT}\n\n═══════════════════════════════════════════════\nMEDICAL REPORT CONTENT (COMPLETE TEXT — ALL PAGES)\n═══════════════════════════════════════════════\n${reportText}`;
-    result = await model.generateContent(prompt);
+    result = await generateWithFallback(genAI, prompt, {
+      temperature: 0.1,
+      responseMimeType: "application/json",
+    });
   }
 
   const responseText = result.response.text();

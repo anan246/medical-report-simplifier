@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useTheme } from "@/components/ThemeProvider";
+import { useAppContext, LANGUAGES } from "@/components/ThemeProvider";
+import { getT } from "@/lib/i18n";
 
 function SunIcon() {
   return (
@@ -22,10 +23,16 @@ function MoonIcon() {
 
 export default function Navbar() {
   const pathname = usePathname();
-  const { theme, toggleTheme } = useTheme();
+  const { theme, toggleTheme, language } = useAppContext();
+  const currentLang = LANGUAGES.find((l) => l.code === language) || LANGUAGES[0];
+  const t = getT(language);
+
+  function openSettings() {
+    window.dispatchEvent(new CustomEvent("medilens:open-settings"));
+  }
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md">
+    <header className="animate-fade-down sticky top-0 z-50 w-full border-b border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
 
         {/* Logo */}
@@ -42,7 +49,7 @@ export default function Navbar() {
 
         {/* Nav links */}
         <nav className="hidden sm:flex items-center gap-1">
-          <Link
+        <Link
             href="/upload"
             className={`px-4 py-2 rounded-lg text-sm font-medium ${
               pathname === "/upload"
@@ -50,7 +57,7 @@ export default function Navbar() {
                 : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
             }`}
           >
-            Upload Report
+            {t.nav.upload}
           </Link>
         </nav>
 
@@ -65,6 +72,19 @@ export default function Navbar() {
             {theme === "dark" ? <SunIcon /> : <MoonIcon />}
           </button>
 
+          {/* Language + Settings button */}
+          <button
+            onClick={openSettings}
+            aria-label="Settings"
+            title="Settings & Language"
+            className="hidden sm:flex items-center gap-1.5 h-9 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:border-emerald-300 dark:hover:border-emerald-700 shadow-sm text-xs font-semibold"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
+            </svg>
+            {currentLang.code.toUpperCase()}
+          </button>
+
           {/* CTA */}
           <Link
             href="/upload"
@@ -73,8 +93,8 @@ export default function Navbar() {
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
             </svg>
-            <span className="hidden sm:inline">Analyse Report</span>
-            <span className="sm:hidden">Analyse</span>
+            <span className="hidden sm:inline">{t.nav.analyse}</span>
+            <span className="sm:hidden">{t.nav.analyse.split(" ")[0]}</span>
           </Link>
         </div>
       </div>

@@ -1,30 +1,63 @@
 "use client";
 
-import { createContext, useContext, useState, useRef, useLayoutEffect } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 
-const ThemeContext = createContext({ theme: "light", toggleTheme: () => {} });
+export const LANGUAGES = [
+  { code: "en",    label: "English",    native: "English" },
+  { code: "hi",    label: "Hindi",      native: "हिन्दी" },
+  { code: "ta",    label: "Tamil",      native: "தமிழ்" },
+  { code: "te",    label: "Telugu",     native: "తెలుగు" },
+  { code: "kn",    label: "Kannada",    native: "ಕನ್ನಡ" },
+  { code: "ml",    label: "Malayalam",  native: "മലയാളം" },
+  { code: "bn",    label: "Bengali",    native: "বাংলা" },
+  { code: "mr",    label: "Marathi",    native: "मराठी" },
+  { code: "gu",    label: "Gujarati",   native: "ગુજરાતી" },
+  { code: "pa",    label: "Punjabi",    native: "ਪੰਜਾਬੀ" },
+  { code: "es",    label: "Spanish",    native: "Español" },
+  { code: "fr",    label: "French",     native: "Français" },
+  { code: "de",    label: "German",     native: "Deutsch" },
+  { code: "zh",    label: "Chinese",    native: "中文" },
+  { code: "ar",    label: "Arabic",     native: "العربية" },
+  { code: "ja",    label: "Japanese",   native: "日本語" },
+  { code: "pt",    label: "Portuguese", native: "Português" },
+];
+
+const AppContext = createContext({
+  theme: "light",
+  toggleTheme: () => {},
+  language: "en",
+  setLanguage: () => {},
+});
 
 export function useTheme() {
-  return useContext(ThemeContext);
+  return useContext(AppContext);
+}
+
+export function useLanguage() {
+  const { language, setLanguage } = useContext(AppContext);
+  return { language, setLanguage, languages: LANGUAGES };
+}
+
+export function useAppContext() {
+  return useContext(AppContext);
 }
 
 export default function ThemeProvider({ children }) {
-  // Read the theme synchronously on first render (client only).
-  // useLayoutEffect + useRef lets us apply the class without setState in an effect.
   const [theme, setTheme] = useState("light");
-  const initialised = useRef(false);
+  const [language, setLanguageSt] = useState("en");
+  const [mounted, setMounted] = useState(false);
 
-  // useLayoutEffect runs synchronously after DOM paint — before the browser
-  // shows anything — so there is no flash. It does NOT trigger the lint rule
-  // because it is not useEffect.
-  useLayoutEffect(() => {
-    if (initialised.current) return;
-    initialised.current = true;
-    const stored = localStorage.getItem("medilens-theme");
+  useEffect(() => {
+    const storedTheme = localStorage.getItem("medilens-theme");
     const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const initial = stored || (prefersDark ? "dark" : "light");
-    document.documentElement.classList.toggle("dark", initial === "dark");
+    const initial = storedTheme || (prefersDark ? "dark" : "light");
     setTheme(initial);
+    document.documentElement.classList.toggle("dark", initial === "dark");
+
+    const storedLang = localStorage.getItem("medilens-language") || "en";
+    setLanguageSt(storedLang);
+
+    setMounted(true);
   }, []);
 
   function toggleTheme() {
@@ -34,9 +67,16 @@ export default function ThemeProvider({ children }) {
     document.documentElement.classList.toggle("dark", next === "dark");
   }
 
+  function setLanguage(code) {
+    setLanguageSt(code);
+    localStorage.setItem("medilens-language", code);
+  }
+
+  if (!mounted) return <>{children}</>;
+
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+    <AppContext.Provider value={{ theme, toggleTheme, language, setLanguage }}>
       {children}
-    </ThemeContext.Provider>
+    </AppContext.Provider>
   );
 }
