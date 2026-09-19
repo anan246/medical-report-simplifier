@@ -93,17 +93,40 @@ export default function ReportList() {
   const [selected, setSelected] = useState([]);   // max 2 reportIds
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
+  const [owner, setOwner] = useState(null);
 
   useEffect(() => {
     getReports()
       .then((data) => {
-        const sorted = [...data].sort(
+        const normalised = (Array.isArray(data) ? data : []).map((report, index) => ({
+          ...report,
+          // reportId is the database identifier the compare API looks up, so it is never
+          // rewritten. uniqueKey only exists to keep React and the DOM stable.
+          uniqueKey: `${report?.reportId ?? report?.id ?? report?._id ?? "report"}-${index}`,
+        }));
+        const sorted = normalised.sort(
           (a, b) => new Date(b.reportDate) - new Date(a.reportDate)
         );
         setReports(sorted);
       })
-      .catch((err) => setError(err.message))
+      .catch((err) => {
+        if (err?.status === 401) {
+          router.replace("/login");
+          return;
+        }
+        setError(err.message);
+      })
       .finally(() => setLoading(false));
+  }, [router]);
+
+  // Show which account is signed in, so it is never ambiguous whose reports are listed.
+  useEffect(() => {
+    let active = true;
+    fetch("/api/settings", { credentials: "include", cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => { if (active) setOwner(data?.user ?? null); })
+      .catch(() => { if (active) setOwner(null); });
+    return () => { active = false; };
   }, []);
 
   function toggleSelect(id) {
@@ -120,19 +143,27 @@ export default function ReportList() {
     }
   }
 
-  const allTypes = [...new Set(reports.map((r) => r.reportType))];
+  const allTypes = [...new Set(reports.map((r) => r.reportType).filter(Boolean))];
 
   const filtered = reports.filter((r) => {
     const matchSearch =
       !search ||
-      r.reportName.toLowerCase().includes(search.toLowerCase()) ||
-      r.reportType.toLowerCase().includes(search.toLowerCase());
+      String(r.reportName ?? "").toLowerCase().includes(search.toLowerCase()) ||
+      String(r.reportType ?? "").toLowerCase().includes(search.toLowerCase());
     const matchType = !typeFilter || r.reportType === typeFilter;
     return matchSearch && matchType;
   });
 
   return (
     <div>
+      {!loading && owner?.email && (
+        <p className="mb-5 flex flex-wrap items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+          <span aria-hidden="true">🔒</span>
+          Signed in as <span className="font-semibold text-slate-700 dark:text-slate-300">{owner.email}</span>
+          — only this account&apos;s own reports are ever listed or compared.
+        </p>
+      )}
+
       {!loading && reports.length > 0 && (
         <FilterBar
           search={search}
@@ -187,7 +218,7 @@ export default function ReportList() {
           ? <EmptyState />
           : filtered.map((report) => (
               <ReportCard
-                key={report.reportId}
+                key={report.uniqueKey}
                 report={report}
                 isSelected={selected.includes(report.reportId)}
                 selectionDisabled={

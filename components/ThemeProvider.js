@@ -1,42 +1,73 @@
 "use client";
 
-import { createContext, useContext, useState, useRef, useLayoutEffect } from "react";
+import { createContext, useCallback, useContext, useLayoutEffect, useRef, useState } from "react";
 
-const ThemeContext = createContext({ theme: "light", toggleTheme: () => {} });
+export const LANGUAGES = [
+  { code: "en", label: "English", native: "English" },
+  { code: "hi", label: "Hindi", native: "हिन्दी" },
+  { code: "kn", label: "Kannada", native: "ಕನ್ನಡ" },
+];
+
+const AppContext = createContext({
+  theme: "light",
+  setThemePreference: () => {},
+  toggleTheme: () => {},
+  language: "en",
+  setLanguage: () => {},
+  languages: LANGUAGES,
+});
 
 export function useTheme() {
-  return useContext(ThemeContext);
+  return useContext(AppContext);
+}
+
+export function useLanguage() {
+  const { language, setLanguage } = useContext(AppContext);
+  return { language, setLanguage, languages: LANGUAGES };
+}
+
+export function useAppContext() {
+  return useContext(AppContext);
 }
 
 export default function ThemeProvider({ children }) {
-  // Read the theme synchronously on first render (client only).
-  // useLayoutEffect + useRef lets us apply the class without setState in an effect.
   const [theme, setTheme] = useState("light");
+  const [language, setLanguageState] = useState("en");
   const initialised = useRef(false);
 
-  // useLayoutEffect runs synchronously after DOM paint — before the browser
-  // shows anything — so there is no flash. It does NOT trigger the lint rule
-  // because it is not useEffect.
   useLayoutEffect(() => {
     if (initialised.current) return;
     initialised.current = true;
-    const stored = localStorage.getItem("medilens-theme");
+    const storedTheme = localStorage.getItem("medilens-theme-preference") || localStorage.getItem("medilens-theme") || "system";
+    const storedLanguage = localStorage.getItem("medilens-language") || "en";
     const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const initial = stored || (prefersDark ? "dark" : "light");
-    document.documentElement.classList.toggle("dark", initial === "dark");
-    setTheme(initial);
+    const resolvedTheme = storedTheme === "system" ? (prefersDark ? "dark" : "light") : storedTheme;
+    document.documentElement.classList.toggle("dark", resolvedTheme === "dark");
+    setTheme(resolvedTheme);
+    setLanguageState(storedLanguage);
   }, []);
 
-  function toggleTheme() {
-    const next = theme === "light" ? "dark" : "light";
-    setTheme(next);
-    localStorage.setItem("medilens-theme", next);
-    document.documentElement.classList.toggle("dark", next === "dark");
-  }
+  const setThemePreference = useCallback((preference) => {
+    const resolvedTheme = preference === "system"
+      ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+      : preference;
+    setTheme(resolvedTheme);
+    localStorage.setItem("medilens-theme-preference", preference);
+    document.documentElement.classList.toggle("dark", resolvedTheme === "dark");
+  }, []);
+
+  const toggleTheme = useCallback(() => {
+    setThemePreference(theme === "light" ? "dark" : "light");
+  }, [setThemePreference, theme]);
+
+  const setLanguage = useCallback((nextLanguage) => {
+    setLanguageState(nextLanguage);
+    localStorage.setItem("medilens-language", nextLanguage);
+  }, []);
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+    <AppContext.Provider value={{ theme, setThemePreference, toggleTheme, language, setLanguage, languages: LANGUAGES }}>
       {children}
-    </ThemeContext.Provider>
+    </AppContext.Provider>
   );
 }

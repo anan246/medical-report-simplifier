@@ -2,26 +2,28 @@ import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import Report from "@/models/Report";
 import { normalizeReportSummary } from "@/lib/reportAdapter";
+import { getAuthenticatedUser } from "@/lib/auth";
+import { privateJson } from "@/lib/apiResponse";
 
 export async function GET(request) {
   try {
+    const user = getAuthenticatedUser(request);
+    if (!user) {
+      return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+    }
+
     await connectDB();
 
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId") ?? null;
-
-    const query = userId ? { userId } : {};
-
-    const docs = await Report.find(query)
+    const docs = await Report.find({ userId: user.userId })
       .select(
-        "_id reportId userId reportName reportType reportDate createdAt tests"
+        "_id reportId reportName reportType reportDate createdAt tests"
       )
       .sort({ createdAt: -1 })
       .lean();
 
     const reports = docs.map(normalizeReportSummary).filter(Boolean);
 
-    return NextResponse.json(reports, { status: 200 });
+    return privateJson(reports, { status: 200 });
   } catch (error) {
     console.error("[GET /api/reports]", error);
 

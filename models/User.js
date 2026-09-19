@@ -32,6 +32,31 @@ const userSchema = new mongoose.Schema(
       default: "",
     },
 
+    language: {
+      type: String,
+      enum: ["en", "hi", "kn"],
+      default: "en",
+    },
+
+    theme: {
+      type: String,
+      enum: ["light", "dark", "system"],
+      default: "system",
+    },
+
+    notifications: {
+      email: { type: Boolean, default: true },
+      reportReady: { type: Boolean, default: true },
+      productUpdates: { type: Boolean, default: false },
+    },
+
+    voice: {
+      enabled: { type: Boolean, default: true },
+      autoReadSummary: { type: Boolean, default: false },
+      language: { type: String, enum: ["en", "hi", "kn"], default: "en" },
+      rate: { type: Number, min: 0.5, max: 2, default: 1 },
+    },
+
     createdAt: {
       type: Date,
       default: Date.now,

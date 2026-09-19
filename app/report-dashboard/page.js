@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 
 function Pulse({ className }) {
@@ -57,6 +58,7 @@ function ReportIcon() {
 }
 
 export default function DashboardPage() {
+    const router = useRouter();
   const [reports, setReports] = useState([]);
   const [status, setStatus] = useState("loading");
   const [retryCount, setRetryCount] = useState(0);
@@ -69,14 +71,22 @@ export default function DashboardPage() {
       setReports([]);
 
       try {
-        const res = await fetch("/api/reports");
+        const res = await fetch("/api/reports", {
+  cache: "no-store",
+  credentials: "same-origin",
+});
 
         if (cancelled) return;
 
-        if (!res.ok) {
-          setStatus("error");
-          return;
-        }
+        if (res.status === 401) {
+  router.replace("/login");
+  return;
+}
+
+if (!res.ok) {
+  setStatus("error");
+  return;
+}
 
         const data = await res.json();
 
@@ -101,7 +111,7 @@ export default function DashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [retryCount]);
+  }, [retryCount, router]);
 
   return (
     <main className="min-h-screen bg-slate-50 dark:bg-slate-950 px-4 py-10 sm:px-6 lg:px-8">
