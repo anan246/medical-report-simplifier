@@ -164,7 +164,7 @@ export default function SupportChatbot() {
 
   // Reset greeting when language changes
   useEffect(() => {
-    setMessages([{ role: "assistant", content: getT(language).chat.greeting }]);
+    queueMicrotask(() => setMessages([{ role: "assistant", content: getT(language).chat.greeting }]));
   }, [language]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -181,7 +181,7 @@ export default function SupportChatbot() {
 
   useEffect(() => {
     if (panel === "chat") {
-      setUnread(0);
+      queueMicrotask(() => setUnread(0));
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
       setTimeout(() => inputRef.current?.focus(), 100);
     }
