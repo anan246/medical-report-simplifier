@@ -3,12 +3,17 @@ import { v4 as uuidv4 } from "uuid";
 import { connectDB } from "@/lib/mongodb";
 import Report from "@/models/Report";
 import { validateFile, saveFile } from "@/lib/fileStorage";
+import { getAuthenticatedUser } from "@/lib/auth";
 
 export async function POST(request) {
   try {
+    const user = getAuthenticatedUser(request);
+    if (!user) {
+      return NextResponse.json({ success: false, message: "Authentication required." }, { status: 401 });
+    }
+
     const formData = await request.formData();
     const file = formData.get("file");
-    const userId = formData.get("userId") || "anonymous";
 
     if (!file || typeof file === "string") {
       return NextResponse.json(
@@ -28,7 +33,7 @@ export async function POST(request) {
     }
 
     // Save file to disk
-    const { fileUrl, filePath } = await saveFile(file);
+    const { fileUrl } = await saveFile(file);
 
     // Create initial report record in MongoDB
     await connectDB();
@@ -36,7 +41,7 @@ export async function POST(request) {
     const reportId = uuidv4();
     const report = await Report.create({
       reportId,
-      userId,
+      userId: user.userId,
       reportName: file.name,
       reportType: "pending",
       reportDate: new Date(),
@@ -49,7 +54,6 @@ export async function POST(request) {
       success: true,
       reportId: report.reportId,
       fileUrl,
-      filePath,
       mimeType: file.type,
       message: "Report uploaded successfully",
     });

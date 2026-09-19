@@ -121,6 +121,10 @@ export default function CompareView({ idA, idB }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const sameReport = Boolean(idA && idB && idA === idB);
+  const displayError = sameReport
+    ? "Cannot compare a report with itself. Please select two different reports."
+    : error;
 
   useEffect(() => {
     if (!idA || !idB) {
@@ -128,8 +132,6 @@ export default function CompareView({ idA, idB }) {
       return;
     }
     if (idA === idB) {
-      setError("Cannot compare a report with itself. Please select two different reports.");
-      setLoading(false);
       return;
     }
 
@@ -184,13 +186,13 @@ export default function CompareView({ idA, idB }) {
       </div>
 
       {/* Loading */}
-      {loading && <CompareSkeleton />}
+      {loading && !sameReport && <CompareSkeleton />}
 
       {/* Error */}
-      {error && (
+      {displayError && (
         <div className="rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 p-5 text-sm text-red-700 dark:text-red-300">
           <p className="font-semibold mb-1">Could not load comparison</p>
-          <p className="text-xs">{error}</p>
+          <p className="text-xs">{displayError}</p>
           <button
             onClick={() => router.push("/history")}
             className="mt-3 text-xs text-red-600 dark:text-red-400 hover:underline"

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { connectDB } from "../../../../../lib/mongodb";
 import Report from "../../../../../models/Report";
 import { normalizeReport } from "../../../../../lib/reportAdapter";
+import { getAuthenticatedUser } from "../../../../../lib/auth";
 
 async function getGeminiModel() {
   const { GoogleGenerativeAI } = await import("@google/generative-ai");
@@ -60,15 +61,20 @@ export async function POST(request, { params }) {
   }
 
   try {
+    const user = getAuthenticatedUser(request);
+    if (!user) {
+      return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+    }
+
     await connectDB();
 
     // Try _id (ObjectId hex) first, then reportId (UUID)
     let doc = null;
     if (/^[0-9a-fA-F]{24}$/.test(id)) {
-      doc = await Report.findById(id).lean();
+      doc = await Report.findOne({ _id: id, userId: user.userId }).lean();
     }
     if (!doc) {
-      doc = await Report.findOne({ reportId: id }).lean();
+      doc = await Report.findOne({ reportId: id, userId: user.userId }).lean();
     }
 
     if (!doc) {

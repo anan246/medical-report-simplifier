@@ -1,6 +1,10 @@
 import connectDB from "@/lib/mongodb";
+import { getAuthenticatedUser } from "@/lib/auth";
 
-export async function GET() {
+export async function GET(request) {
+  if (!getAuthenticatedUser(request)) {
+    return Response.json({ success: false, message: "Authentication required." }, { status: 401 });
+  }
   try {
     await connectDB();
 

@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import ReadAloud from "@/components/ReadAloud";
+import { useTheme } from "@/components/ThemeProvider";
 
 const STATUS_CONFIG = {
   normal: {
@@ -36,6 +38,7 @@ function StatusBadge({ status }) {
 }
 
 export default function ReportResults({ report }) {
+  const { language } = useTheme();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
@@ -108,6 +111,7 @@ export default function ReportResults({ report }) {
             <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-line">
               {report.aiSummary}
             </p>
+            <ReadAloud text={report.aiSummary} language={language} />
             <p className="mt-3 text-xs text-slate-400 dark:text-slate-500 italic">
               Information summary only — not a medical diagnosis or advice. Consult a qualified healthcare professional.
             </p>
@@ -195,6 +199,7 @@ export default function ReportResults({ report }) {
                     <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Unit</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Reference Range</th>
                     <th className="text-left px-6 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Status</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Voice</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -207,6 +212,7 @@ export default function ReportResults({ report }) {
                       <td className="px-4 py-3.5 text-slate-500 dark:text-slate-400">{test.unit || "—"}</td>
                       <td className="px-4 py-3.5 text-slate-500 dark:text-slate-400 font-mono text-xs">{test.referenceRange || "N/A"}</td>
                       <td className="px-6 py-3.5"><StatusBadge status={test.status} /></td>
+                      <td className="px-4 py-3.5"><ReadAloud text={`${test.testName}: ${test.value} ${test.unit}. Reference range: ${test.referenceRange || "not provided"}. Status: ${test.status || "not specified"}.`} language={language} /></td>
                     </tr>
                   ))}
                 </tbody>
@@ -230,6 +236,7 @@ export default function ReportResults({ report }) {
                     </span>
                     <span>Ref: {test.referenceRange || "N/A"}</span>
                   </div>
+                  <ReadAloud text={`${test.testName}: ${test.value} ${test.unit}. Reference range: ${test.referenceRange || "not provided"}. Status: ${test.status || "not specified"}.`} language={language} />
                 </div>
               ))}
             </div>

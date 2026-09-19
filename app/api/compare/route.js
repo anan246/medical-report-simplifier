@@ -13,6 +13,7 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import Report from "@/models/Report";
+import { getAuthenticatedUser } from "@/lib/auth";
 
 /**
  * Align two report's test arrays and compute deltas + trends.
@@ -70,6 +71,11 @@ function buildComparison(reportA, reportB) {
 }
 
 export async function GET(request) {
+  const user = getAuthenticatedUser(request);
+  if (!user) {
+    return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+  }
+
   const { searchParams } = new URL(request.url);
   const idA = searchParams.get("a");
   const idB = searchParams.get("b");
@@ -92,7 +98,9 @@ export async function GET(request) {
    await connectDB();
 
 const findReport = async (id) => {
-  return Report.findOne({ reportId: id }).lean();
+  return Report.findOne({ reportId: id, userId: user.userId })
+    .select("reportId reportName reportType reportDate tests aiSummary createdAt updatedAt")
+    .lean();
 };
 
     const [reportA, reportB] = await Promise.all([
@@ -109,7 +117,11 @@ const findReport = async (id) => {
 
     const comparison = buildComparison(reportA, reportB);
 
-    return NextResponse.json({ reportA, reportB, comparison }, { status: 200 });
+    return NextResponse.json({
+      reportA: { ...reportA, userId: undefined, fileUrl: undefined },
+      reportB: { ...reportB, userId: undefined, fileUrl: undefined },
+      comparison,
+    }, { status: 200 });
   } catch (error) {
     console.error("[GET /api/compare]", error);
     return NextResponse.json(

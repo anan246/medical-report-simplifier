@@ -104,7 +104,6 @@ export default function UploadPage() {
     try {
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("userId", "anonymous");
 
       setProcessingStep(2);
       const uploadRes = await fetch("/api/reports/upload", { method: "POST", body: formData });

@@ -3,6 +3,8 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import ReadAloud from "@/components/ReadAloud";
+import { useTheme } from "@/components/ThemeProvider";
 
 // Static educational descriptions keyed by lowercase test name
 // (testId is now a UUID so we match on the normalized test name instead)
@@ -64,6 +66,7 @@ function StatusBadge({ status }) {
 }
 
 function ExplanationSection({ reportId, testId }) {
+  const { language } = useTheme();
   const [aiStatus, setAiStatus] = useState("idle"); // idle | loading | ok | error
   const [explanation, setExplanation] = useState(null);
 
@@ -198,6 +201,11 @@ function ExplanationSection({ reportId, testId }) {
           </p>
         </div>
       )}
+
+      <ReadAloud
+        text={[explanation.summary, explanation.whatItMeasures, explanation.resultMeaning, explanation.referenceRangeNote].filter(Boolean).join(" ")}
+        language={language}
+      />
 
       <p className="text-xs text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-800">
         AI-generated explanations are for educational purposes only and should not replace advice from a qualified healthcare professional.
