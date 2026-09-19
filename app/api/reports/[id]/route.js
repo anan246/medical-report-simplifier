@@ -1,44 +1,30 @@
 import { NextResponse } from "next/server";
-import { ObjectId } from "mongodb";
-import clientPromise from "../../../../lib/mongodb";
+import { connectDB } from "../../../../lib/mongodb";
+import Report from "../../../../models/Report";
 import { normalizeReport } from "../../../../lib/reportAdapter";
-
-// Real DB/collection confirmed from Atlas inspection
-const DB_NAME = "test";
-const COLLECTION = "reports";
 
 export async function GET(request, { params }) {
   const { id } = await params;
 
   try {
-    const client = await clientPromise;
-    const db = client.db(DB_NAME);
-    const collection = db.collection(COLLECTION);
+    await connectDB();
 
-    // Support both ObjectId and string-based IDs
+    // Try MongoDB _id (24-char hex ObjectId) first, then reportId (UUID)
     let doc = null;
-    if (ObjectId.isValid(id)) {
-      doc = await collection.findOne({ _id: new ObjectId(id) });
+    if (/^[0-9a-fA-F]{24}$/.test(id)) {
+      doc = await Report.findById(id).lean();
     }
-    // Fallback: try matching a string "id" field if ObjectId lookup failed
     if (!doc) {
-      doc = await collection.findOne({ id });
+      doc = await Report.findOne({ reportId: id }).lean();
     }
 
     if (!doc) {
       return NextResponse.json({ error: "Report not found." }, { status: 404 });
     }
 
-    // Convert ObjectId to string before normalizing (plain object required)
-    const plain = JSON.parse(JSON.stringify(doc));
-    const report = normalizeReport(plain);
-
-    return NextResponse.json(report);
+    return NextResponse.json(normalizeReport(doc));
   } catch (err) {
     console.error("[GET /api/reports/:id]", err.message);
-    return NextResponse.json(
-      { error: "Failed to load report." },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to load report." }, { status: 500 });
   }
 }

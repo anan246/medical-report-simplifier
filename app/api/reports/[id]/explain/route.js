@@ -1,13 +1,8 @@
 import { NextResponse } from "next/server";
-import { ObjectId } from "mongodb";
-import clientPromise from "../../../../../lib/mongodb";
+import { connectDB } from "../../../../../lib/mongodb";
+import Report from "../../../../../models/Report";
 import { normalizeReport } from "../../../../../lib/reportAdapter";
 
-// Real DB/collection confirmed from Atlas inspection
-const DB_NAME = "test";
-const COLLECTION = "reports";
-
-// Lazy-load Gemini so the module doesn't crash at import time if the key is missing
 async function getGeminiModel() {
   const { GoogleGenerativeAI } = await import("@google/generative-ai");
   const apiKey = process.env.GEMINI_API_KEY;
@@ -21,14 +16,12 @@ function buildPrompt(test, reportName) {
 
 Your role is to help patients understand the information shown on their medical report.
 
-STRICT RULES — you MUST follow these without exception:
+STRICT RULES:
 - Do NOT diagnose any disease or condition.
 - Do NOT say the patient "has" any disease or condition.
 - Do NOT recommend any medication, treatment, or dosage.
-- Do NOT tell the patient to start, stop, or change any medication.
 - Do NOT predict future health outcomes.
-- Do NOT invent or assume information not provided below.
-- Do NOT create a reference range if one is not provided.
+- Do NOT invent information not provided below.
 - Use simple, calm, patient-friendly language.
 - Acknowledge that reference ranges can vary between laboratories.
 - Remind the patient that a healthcare professional interprets results in full context.
@@ -67,56 +60,47 @@ export async function POST(request, { params }) {
   }
 
   try {
-    // 1. Retrieve the real report from MongoDB
-    const client = await clientPromise;
-    const db = client.db(DB_NAME);
-    const collection = db.collection(COLLECTION);
+    await connectDB();
 
+    // Try _id (ObjectId hex) first, then reportId (UUID)
     let doc = null;
-    if (ObjectId.isValid(id)) {
-      doc = await collection.findOne({ _id: new ObjectId(id) });
+    if (/^[0-9a-fA-F]{24}$/.test(id)) {
+      doc = await Report.findById(id).lean();
     }
     if (!doc) {
-      doc = await collection.findOne({ id });
+      doc = await Report.findOne({ reportId: id }).lean();
     }
 
     if (!doc) {
       return NextResponse.json({ error: "Report not found." }, { status: 404 });
     }
 
-    const plain = JSON.parse(JSON.stringify(doc));
-    const report = normalizeReport(plain);
+    const report = normalizeReport(doc);
 
-    // 2. Find the specific test
     const test = report.tests.find((t) => t.id === testId);
     if (!test) {
       return NextResponse.json({ error: "Test not found." }, { status: 404 });
     }
 
-    // 3. Call Gemini server-side
     const model = await getGeminiModel();
-    const prompt = buildPrompt(test, report.reportName);
-
-    const result = await model.generateContent(prompt);
+    const result = await model.generateContent(buildPrompt(test, report.reportName));
     const raw = result.response.text().trim();
 
-    // Strip markdown code fences if Gemini wraps the JSON
-    const jsonText = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+    const jsonText = raw
+      .replace(/^```(?:json)?\s*/i, "")
+      .replace(/\s*```$/, "")
+      .trim();
 
     let explanation;
     try {
       explanation = JSON.parse(jsonText);
     } catch {
-      // If Gemini didn't return valid JSON, return the raw text in summary
       explanation = { summary: raw, whatItMeasures: "", resultMeaning: "", referenceRangeNote: "" };
     }
 
     return NextResponse.json({ explanation });
   } catch (err) {
     console.error("[POST /api/reports/:id/explain]", err.message);
-    return NextResponse.json(
-      { error: "Failed to generate explanation." },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to generate explanation." }, { status: 500 });
   }
 }

@@ -1,51 +1,35 @@
 import { NextResponse } from "next/server";
-import clientPromise from "../../../lib/mongodb";
+import { connectDB } from "../../../lib/mongodb";
+import Report from "../../../models/Report";
 import { normalizeReportSummary } from "../../../lib/reportAdapter";
-
-const DB_NAME = "test";
-const COLLECTION = "reports";
 
 export async function GET(request) {
   try {
-    const client = await clientPromise;
-    const db = client.db(DB_NAME);
-    const collection = db.collection(COLLECTION);
+    await connectDB();
 
-    // ---------------------------------------------------------------------------
-    // User filtering: once Person 1 adds auth, replace "anonymous" with the real
-    // userId from the session/token. For now we return all reports so the demo
-    // works without authentication.
-    // ---------------------------------------------------------------------------
+    // Optional user filtering.
+    // Later, this can be replaced with the authenticated user's ID.
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId") ?? null;
 
     const query = userId ? { userId } : {};
 
-    // Return lightweight summaries — exclude the full tests array to keep the
-    // list response small. Tests are fetched only when a report is selected.
-    const docs = await collection
-      .find(query, {
-        projection: {
-          _id: 1,
-          reportId: 1,
-          userId: 1,
-          reportName: 1,
-          reportType: 1,
-          reportDate: 1,
-          createdAt: 1,
-          // Include tests only to get the count; we strip the content in the adapter
-          tests: 1,
-        },
-      })
+    // Fetch lightweight report information.
+    // The tests field is included so the adapter can calculate the test count.
+    const docs = await Report.find(query)
+      .select(
+        "_id reportId userId reportName reportType reportDate createdAt tests"
+      )
       .sort({ createdAt: -1 })
-      .toArray();
+      .lean();
 
-    const plain = JSON.parse(JSON.stringify(docs));
-    const reports = plain.map(normalizeReportSummary).filter(Boolean);
+    // Convert database documents into the format expected by the frontend.
+    const reports = docs.map(normalizeReportSummary).filter(Boolean);
 
     return NextResponse.json(reports);
   } catch (err) {
-    console.error("[GET /api/reports]", err.message);
+    console.error("[GET /api/reports]", err);
+
     return NextResponse.json(
       { error: "Failed to load reports." },
       { status: 500 }

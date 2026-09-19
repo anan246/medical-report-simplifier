@@ -4,11 +4,12 @@ import { readFile } from "fs/promises";
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
-if (!GEMINI_API_KEY) {
-  throw new Error("GEMINI_API_KEY is not defined in environment variables");
+// Don't throw at module load — throw lazily inside the function so the
+// server starts even without the key (other routes still work).
+function getGenAI() {
+  if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not defined in environment variables");
+  return new GoogleGenerativeAI(GEMINI_API_KEY);
 }
-
-const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
 const EXTRACTION_PROMPT = `You are a medical laboratory report data extraction engine. Your job is to read the COMPLETE medical report provided and extract EVERY test result present.
 
@@ -112,17 +113,17 @@ CRITICAL REMINDERS:
 - Return ONLY the JSON object, no markdown, no explanation`;
 
 export async function extractMedicalReport(filePath, mimeType, reportText) {
-  const model = genAI.getGenerativeModel({
-    model: "gemini-3.5-flash-lite",
-    generationConfig: {
-      temperature: 0.1, // low temperature for consistent structured extraction
-      responseMimeType: "application/json",
-    },
-  });
+  const genAI = getGenAI();
 
   let result;
 
   if (mimeType.startsWith("image/")) {
+    // For images: send the raw image bytes — do NOT set responseMimeType
+    // as it conflicts with multimodal (vision) requests in the SDK.
+    const model = genAI.getGenerativeModel({
+      model: "gemini-2.5-flash",
+      generationConfig: { temperature: 0.1 },
+    });
     const imageBuffer = await readFile(filePath);
     const base64 = imageBuffer.toString("base64");
     result = await model.generateContent([
@@ -130,6 +131,14 @@ export async function extractMedicalReport(filePath, mimeType, reportText) {
       { inlineData: { mimeType, data: base64 } },
     ]);
   } else {
+    // For PDFs: send extracted text with JSON response mode
+    const model = genAI.getGenerativeModel({
+      model: "gemini-2.5-flash",
+      generationConfig: {
+        temperature: 0.1,
+        responseMimeType: "application/json",
+      },
+    });
     const prompt = `${EXTRACTION_PROMPT}\n\n═══════════════════════════════════════════════\nMEDICAL REPORT CONTENT (COMPLETE TEXT — ALL PAGES)\n═══════════════════════════════════════════════\n${reportText}`;
     result = await model.generateContent(prompt);
   }
