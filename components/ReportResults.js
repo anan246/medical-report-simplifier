@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import ReadAloud from "@/components/ReadAloud";
 import { useTheme } from "@/components/ThemeProvider";
+import { getT } from "@/lib/i18n";
 
 const STATUS_CONFIG = {
   normal: {
@@ -39,6 +40,7 @@ function StatusBadge({ status }) {
 
 export default function ReportResults({ report }) {
   const { language } = useTheme();
+  const t = getT(language);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
