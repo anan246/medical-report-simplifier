@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function DashboardPage() {
   return (
     <main className="min-h-screen bg-[#f7fbf8] dark:bg-slate-950">
@@ -35,9 +37,9 @@ export default function DashboardPage() {
 
             </div>
 
-            <button className="px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold transition">
+            <Link href="/upload" className="px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold transition">
               Upload Report
-            </button>
+            </Link>
 
           </div>
 
