@@ -28,12 +28,12 @@ const STATUS_CONFIG = {
   },
 };
 
-function StatusBadge({ status }) {
+function StatusBadge({ status, labels }) {
   const config = STATUS_CONFIG[status] || STATUS_CONFIG.unknown;
   return (
     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${config.className}`}>
-      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${config.dot}`} />
-      {config.label}
+      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${config.dot}`} />
+      {labels?.[status] || config.label}
     </span>
   );
 }
@@ -140,14 +140,14 @@ export default function ReportResults({ report }) {
         {report.aiSummary && (
           <div className="mt-4 p-4 bg-[#f7fbf8] dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700">
             <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">
-              Report Summary
+              {t.results.reportSummary}
             </p>
             <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-line">
-              {translationLoading ? "Translating summary..." : translatedSummary || report.aiSummary}
+              {translationLoading ? `${t.results.translating}...` : translatedSummary || report.aiSummary}
             </p>
             <ReadAloud text={translatedSummary || report.aiSummary} language={translatedSummary ? language : "en"} />
             <p className="mt-3 text-xs text-slate-400 dark:text-slate-500 italic">
-              Information summary only — not a medical diagnosis or advice. Consult a qualified healthcare professional.
+              {t.results.disclaimer}
             </p>
           </div>
         )}
@@ -162,7 +162,7 @@ export default function ReportResults({ report }) {
             </svg>
             <input
               type="text"
-              placeholder="Search tests..."
+              placeholder={t.results.searchPlaceholder}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-9 pr-4 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
@@ -197,7 +197,7 @@ export default function ReportResults({ report }) {
       <div className="animate-fade-up delay-200 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-            Test Results ({filteredTests.length}{filteredTests.length !== tests.length ? ` of ${tests.length}` : ""})
+            {t.results.testResults} ({filteredTests.length}{filteredTests.length !== tests.length ? ` ${t.results.of} ${tests.length}` : ""})
           </h3>
         </div>
 
@@ -208,16 +208,16 @@ export default function ReportResults({ report }) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
             </div>
-            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">No lab test values found</p>
+            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">{t.results.noTests}</p>
             <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-              This appears to be a narrative report rather than a lab results report. See the summary above.
+              {t.results.noTestsSub}
             </p>
           </div>
         )}
 
         {tests.length > 0 && filteredTests.length === 0 && (
           <div className="px-6 py-8 text-center">
-            <p className="text-sm text-slate-400">No tests match your search or filter.</p>
+            <p className="text-sm text-slate-400">{t.results.noMatch}</p>
           </div>
         )}
 
@@ -228,12 +228,12 @@ export default function ReportResults({ report }) {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-slate-50 dark:bg-slate-800/50">
-                    <th className="text-left px-6 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Test Name</th>
-                    <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Value</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Unit</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Reference Range</th>
-                    <th className="text-left px-6 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Status</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Voice</th>
+                    <th className="text-left px-6 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{t.results.testName}</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{t.results.value}</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{t.results.unit}</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{t.results.referenceRange}</th>
+                    <th className="text-left px-6 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{t.results.status}</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{t.results.voice}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -249,7 +249,7 @@ export default function ReportResults({ report }) {
                       </td>
                       <td className="px-4 py-3.5 text-slate-500 dark:text-slate-400">{test.unit || "—"}</td>
                       <td className="px-4 py-3.5 text-slate-500 dark:text-slate-400 font-mono text-xs">{test.referenceRange || "N/A"}</td>
-                      <td className="px-6 py-3.5"><StatusBadge status={test.status} /></td>
+                      <td className="px-6 py-3.5"><StatusBadge status={test.status} labels={t.results.statusLabels} /></td>
                       <td className="px-4 py-3.5"><ReadAloud text={`${test.testName}: ${test.value} ${test.unit}. Reference range: ${test.referenceRange || "not provided"}. Status: ${test.status || "not specified"}.`} language={language} /></td>
                     </tr>
                   ))}
@@ -267,7 +267,7 @@ export default function ReportResults({ report }) {
                 >
                   <div className="flex items-start justify-between gap-2">
                     <p className="font-medium text-slate-900 dark:text-white text-sm">{test.testName}</p>
-                    <StatusBadge status={test.status} />
+                    <StatusBadge status={test.status} labels={t.results.statusLabels} />
                   </div>
                   <div className="flex gap-4 text-sm text-slate-500 dark:text-slate-400">
                     <span>
@@ -276,7 +276,7 @@ export default function ReportResults({ report }) {
                       </span>{" "}
                       {test.unit || ""}
                     </span>
-                    <span>Ref: {test.referenceRange || "N/A"}</span>
+                    <span>{t.results.referenceShort}: {test.referenceRange || "N/A"}</span>
                   </div>
                   <ReadAloud text={`${test.testName}: ${test.value} ${test.unit}. Reference range: ${test.referenceRange || "not provided"}. Status: ${test.status || "not specified"}.`} language={language} />
                 </div>
@@ -287,7 +287,7 @@ export default function ReportResults({ report }) {
       </div>
 
       <p className="text-center text-xs text-slate-400 dark:text-slate-500 pb-4">
-        MediLens extracts and simplifies report data. Always consult a qualified healthcare professional for medical advice.
+        {t.results.footer}
       </p>
     </div>
   );

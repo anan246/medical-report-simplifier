@@ -4,8 +4,10 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useParams } from "next/navigation";
+import { useTheme } from "@/components/ThemeProvider";
+import { getT } from "@/lib/i18n";
 
-function StatusBadge({ status }) {
+function StatusBadge({ status, labels }) {
   const isWithin = status === "Within Range";
   if (!status) return <span className="text-sm text-slate-400 dark:text-slate-500">—</span>;
   return (
@@ -14,7 +16,7 @@ function StatusBadge({ status }) {
         ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400"
         : "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400"
     }`}>
-      {isWithin ? "✓ Within Range" : "⚠ Outside Range"}
+      {isWithin ? `✓ ${labels.withinRange}` : `⚠ ${labels.outsideRange}`}
     </span>
   );
 }
@@ -38,6 +40,8 @@ function StatCard({ label, value, color, icon }) {
 
 export default function ReportTestsPage() {
   const { id } = useParams();
+  const { language } = useTheme();
+  const t = getT(language);
   const [report, setReport] = useState(null);
   const [status, setStatus] = useState("loading");
   const [retryCount, setRetryCount] = useState(0);
@@ -78,7 +82,7 @@ export default function ReportTestsPage() {
           href="/report-dashboard"
           className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-emerald-700 dark:text-slate-300 dark:hover:text-emerald-400 transition-colors"
         >
-          ← Back to My Reports
+          ← {t.results.backToReports}
         </Link>
 
         {/* Hero banner */}
@@ -91,7 +95,7 @@ export default function ReportTestsPage() {
             priority
             unoptimized
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-teal-900/85 via-emerald-900/60 to-transparent" />
+          <div className="absolute inset-0 bg-linear-to-r from-teal-900/85 via-emerald-900/60 to-transparent" />
           <div className="absolute inset-0 flex items-end px-8 pb-7">
             {status === "ok" && report ? (
               <div>
@@ -102,7 +106,7 @@ export default function ReportTestsPage() {
             ) : (
               <div>
                 <p className="text-emerald-300 text-xs font-semibold uppercase tracking-widest mb-1">MediLens</p>
-                <h1 className="text-2xl sm:text-3xl font-bold text-white drop-shadow">Test Results</h1>
+                <h1 className="text-2xl sm:text-3xl font-bold text-white drop-shadow">{t.results.testResults}</h1>
               </div>
             )}
           </div>
@@ -131,9 +135,9 @@ export default function ReportTestsPage() {
         {status === "notfound" && (
           <div className="bg-white dark:bg-slate-900 rounded-2xl p-12 shadow-sm text-center space-y-4">
             <div className="text-6xl">🔍</div>
-            <p className="font-semibold text-slate-900 dark:text-white text-lg">Report not found</p>
+            <p className="font-semibold text-slate-900 dark:text-white text-lg">{t.results.reportNotFound}</p>
             <Link href="/report-dashboard" className="inline-block text-sm font-medium text-emerald-700 hover:text-emerald-800 dark:text-emerald-400">
-              ← Back to My Reports
+              ← {t.results.backToReports}
             </Link>
           </div>
         )}
@@ -142,12 +146,12 @@ export default function ReportTestsPage() {
         {status === "error" && (
           <div className="bg-white dark:bg-slate-900 rounded-2xl p-10 shadow-sm text-center space-y-4">
             <div className="text-5xl">😕</div>
-            <p className="font-semibold text-slate-900 dark:text-white">Couldn&apos;t load this report</p>
+            <p className="font-semibold text-slate-900 dark:text-white">{t.results.loadReportError}</p>
             <button
               onClick={() => setRetryCount((n) => n + 1)}
               className="px-5 py-2.5 text-sm font-semibold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white transition-all hover:scale-105 active:scale-95 shadow-md"
             >
-              Try Again
+              {t.results.tryAgain}
             </button>
           </div>
         )}
@@ -157,13 +161,13 @@ export default function ReportTestsPage() {
           <>
             {/* Summary stat cards */}
             <div className="grid grid-cols-3 gap-4">
-              <StatCard label="Total Tests" value={tests.length} icon="🧪"
+              <StatCard label={`${t.results.total} ${t.results.testResults}`} value={tests.length} icon="🧪"
                 color={{ bg: "bg-white dark:bg-slate-900", border: "border-slate-200 dark:border-slate-800", blob: "bg-slate-400", label: "text-slate-500 dark:text-slate-400", value: "text-slate-900 dark:text-white" }}
               />
-              <StatCard label="Within Range" value={withinCount} icon="✅"
+              <StatCard label={t.results.withinRange} value={withinCount} icon="✅"
                 color={{ bg: "bg-emerald-50 dark:bg-emerald-950/30", border: "border-emerald-200 dark:border-emerald-900", blob: "bg-emerald-400", label: "text-emerald-600 dark:text-emerald-400", value: "text-emerald-700 dark:text-emerald-400" }}
               />
-              <StatCard label="Outside Range" value={outsideCount} icon="⚠️"
+              <StatCard label={t.results.outsideRange} value={outsideCount} icon="⚠️"
                 color={{ bg: "bg-amber-50 dark:bg-amber-950/30", border: "border-amber-200 dark:border-amber-900", blob: "bg-amber-400", label: "text-amber-600 dark:text-amber-400", value: "text-amber-700 dark:text-amber-400" }}
               />
             </div>
@@ -172,14 +176,14 @@ export default function ReportTestsPage() {
             <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm overflow-hidden border border-slate-100 dark:border-slate-800">
               <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                 <div>
-                  <h2 className="font-semibold text-slate-900 dark:text-white">Test Results</h2>
+                  <h2 className="font-semibold text-slate-900 dark:text-white">{t.results.testResults}</h2>
                   {tests.length > 0 && (
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Tap any test for details and AI explanation ✨</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t.results.detailsHint} ✨</p>
                   )}
                 </div>
                 {outsideCount > 0 && (
                   <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400">
-                    {outsideCount} flagged
+                    {outsideCount} {t.results.flagged}
                   </span>
                 )}
               </div>
@@ -187,7 +191,7 @@ export default function ReportTestsPage() {
               {tests.length === 0 ? (
                 <div className="px-6 py-12 text-center space-y-2">
                   <div className="text-4xl">📭</div>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">No test results available yet.</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">{t.results.noResults}</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
@@ -218,7 +222,7 @@ export default function ReportTestsPage() {
                             {test.referenceRange || "—"}
                           </td>
                           <td className="px-5 py-4 whitespace-nowrap">
-                            <StatusBadge status={test.status} />
+                            <StatusBadge status={test.status} labels={t.results} />
                           </td>
                         </tr>
                       ))}
@@ -231,7 +235,7 @@ export default function ReportTestsPage() {
         )}
 
         <p className="text-xs text-slate-400 dark:text-slate-500 text-center pb-4">
-          For educational purposes only — not a medical diagnosis.
+          {t.results.disclaimer}
         </p>
       </div>
     </main>
