@@ -4,29 +4,31 @@ import { connectDB } from "@/lib/mongodb";
 import Report from "@/models/Report";
 import { extractTextFromFile } from "@/lib/extractText";
 import { extractMedicalReport } from "@/services/geminiService";
+import { getAuthenticatedUser } from "@/lib/auth";
 
 // Gemini has a ~1M token limit but large text slows it down — cap at 50k chars
 const MAX_TEXT_LENGTH = 50000;
 
 export async function POST(request) {
   try {
-    const body = await request.json();
-    const { reportId, filePath, mimeType } = body;
+    const user = getAuthenticatedUser(request);
+    if (!user) {
+      return NextResponse.json({ success: false, message: "Authentication required." }, { status: 401 });
+    }
 
-    if (!reportId || !filePath || !mimeType) {
+    const body = await request.json();
+    const { reportId, mimeType } = body;
+
+    if (!reportId || !mimeType) {
       return NextResponse.json(
-        { success: false, message: "reportId, filePath, and mimeType are required" },
+        { success: false, message: "reportId and mimeType are required" },
         { status: 400 }
       );
     }
 
-    const absolutePath = filePath.startsWith("/")
-      ? path.join(process.cwd(), "public", filePath)
-      : filePath;
-
     await connectDB();
 
-    const report = await Report.findOne({ reportId });
+    const report = await Report.findOne({ reportId, userId: user.userId });
     if (!report) {
       return NextResponse.json(
         { success: false, message: "Report not found" },
@@ -34,22 +36,37 @@ export async function POST(request) {
       );
     }
 
-    // Extract text content from file
-    let reportText = "";
-    try {
-      reportText = await extractTextFromFile(absolutePath, mimeType);
-    } catch (err) {
-      console.error("[analyze] text extraction error:", err.message);
+    const storedFilename = report.fileUrl?.split("/").pop();
+    if (!storedFilename || storedFilename.includes("..") || !/^[\w.-]+$/.test(storedFilename)) {
       return NextResponse.json(
-        { success: false, message: `Content extraction failed: ${err.message}` },
+        { success: false, message: "Report file is unavailable." },
         { status: 422 }
       );
+    }
+
+    const storageRoot = report.fileUrl.startsWith("/api/reports/files/")
+      ? path.join(process.cwd(), "storage", "uploads")
+      : path.join(process.cwd(), "public", "uploads");
+    const absolutePath = path.join(storageRoot, storedFilename);
+
+    // Extract text content from file
+    let reportText = "";
+    if (mimeType !== "application/pdf") {
+      try {
+        reportText = await extractTextFromFile(absolutePath, mimeType);
+      } catch (err) {
+        console.error("[analyze] text extraction error:", err.message);
+        return NextResponse.json(
+          { success: false, message: `Content extraction failed: ${err.message}` },
+          { status: 422 }
+        );
+      }
     }
 
     console.log("[analyze] extracted text length:", reportText.length);
     console.log("[analyze] text preview:", reportText.slice(0, 300));
 
-    if (!reportText || reportText.trim().length < 20) {
+    if (mimeType !== "application/pdf" && (!reportText || reportText.trim().length < 20)) {
       return NextResponse.json(
         { success: false, message: "Could not extract readable text from this PDF. It may be a scanned/image-based PDF. Please upload a PNG or JPG instead." },
         { status: 422 }

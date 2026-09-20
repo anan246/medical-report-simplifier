@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <!-- Subtle medical pattern tile: heartbeat line, plus cross, molecule dots -->
+
+  <!-- Heartbeat / ECG line -->
+  <polyline
+    points="0,80 20,80 28,60 36,100 44,50 52,110 60,80 80,80"
+    fill="none" stroke="#10b981" stroke-width="1.2" stroke-opacity="0.18" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Offset second ECG line (bottom half) -->
+  <polyline
+    points="100,160 120,160 128,140 136,180 144,130 152,190 160,160 180,160"
+    fill="none" stroke="#0d9488" stroke-width="1.2" stroke-opacity="0.15" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Medical cross (top-right area) -->
+  <rect x="155" y="22" width="4" height="16" rx="2" fill="#10b981" fill-opacity="0.14"/>
+  <rect x="149" y="28" width="16" height="4" rx="2" fill="#10b981" fill-opacity="0.14"/>
+
+  <!-- Medical cross (bottom-left area) -->
+  <rect x="28" y="148" width="3.5" height="14" rx="1.75" fill="#0d9488" fill-opacity="0.12"/>
+  <rect x="22.75" y="153.25" width="14" height="3.5" rx="1.75" fill="#0d9488" fill-opacity="0.12"/>
+
+  <!-- Molecule: center dot + orbiting dots connected by lines -->
+  <circle cx="155" cy="110" r="3.5" fill="#10b981" fill-opacity="0.16"/>
+  <circle cx="168" cy="102" r="2" fill="#10b981" fill-opacity="0.13"/>
+  <circle cx="168" cy="118" r="2" fill="#10b981" fill-opacity="0.13"/>
+  <circle cx="142" cy="102" r="2" fill="#10b981" fill-opacity="0.13"/>
+  <circle cx="142" cy="118" r="2" fill="#10b981" fill-opacity="0.13"/>
+  <line x1="155" y1="110" x2="168" y2="102" stroke="#10b981" stroke-width="1" stroke-opacity="0.12"/>
+  <line x1="155" y1="110" x2="168" y2="118" stroke="#10b981" stroke-width="1" stroke-opacity="0.12"/>
+  <line x1="155" y1="110" x2="142" y2="102" stroke="#10b981" stroke-width="1" stroke-opacity="0.12"/>
+  <line x1="155" y1="110" x2="142" y2="118" stroke="#10b981" stroke-width="1" stroke-opacity="0.12"/>
+
+  <!-- Small molecule (top-left) -->
+  <circle cx="30" cy="28" r="2.5" fill="#0d9488" fill-opacity="0.14"/>
+  <circle cx="40" cy="22" r="1.5" fill="#0d9488" fill-opacity="0.11"/>
+  <circle cx="40" cy="34" r="1.5" fill="#0d9488" fill-opacity="0.11"/>
+  <line x1="30" y1="28" x2="40" y2="22" stroke="#0d9488" stroke-width="0.8" stroke-opacity="0.11"/>
+  <line x1="30" y1="28" x2="40" y2="34" stroke="#0d9488" stroke-width="0.8" stroke-opacity="0.11"/>
+
+  <!-- Stethoscope arc hint (bottom-right) -->
+  <path d="M 170 170 Q 185 155 185 170 Q 185 185 170 185" fill="none" stroke="#10b981" stroke-width="1.4" stroke-opacity="0.14" stroke-linecap="round"/>
+  <circle cx="170" cy="185" r="3" fill="none" stroke="#10b981" stroke-width="1.2" stroke-opacity="0.14"/>
+
+  <!-- Scattered small dots for texture -->
+  <circle cx="95" cy="30" r="1.5" fill="#10b981" fill-opacity="0.1"/>
+  <circle cx="110" cy="55" r="1" fill="#0d9488" fill-opacity="0.1"/>
+  <circle cx="75" cy="140" r="1.5" fill="#10b981" fill-opacity="0.1"/>
+  <circle cx="50" cy="170" r="1" fill="#0d9488" fill-opacity="0.1"/>
+  <circle cx="130" cy="75" r="1" fill="#10b981" fill-opacity="0.1"/>
+</svg>

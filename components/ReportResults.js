@@ -1,6 +1,9 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { startTransition, useState, useMemo, useEffect } from "react";
+import ReadAloud from "@/components/ReadAloud";
+import { useTheme } from "@/components/ThemeProvider";
+import { getT } from "@/lib/i18n";
 
 const STATUS_CONFIG = {
   normal: {
@@ -25,21 +28,55 @@ const STATUS_CONFIG = {
   },
 };
 
-function StatusBadge({ status }) {
+function StatusBadge({ status, labels }) {
   const config = STATUS_CONFIG[status] || STATUS_CONFIG.unknown;
   return (
     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${config.className}`}>
-      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${config.dot}`} />
-      {config.label}
+      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${config.dot}`} />
+      {labels?.[status] || config.label}
     </span>
   );
 }
 
 export default function ReportResults({ report }) {
+  const { language } = useTheme();
+  const t = getT(language);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [translatedSummary, setTranslatedSummary] = useState("");
+  const [translationLoading, setTranslationLoading] = useState(false);
 
-  const tests = useMemo(() => report?.tests ?? [], [report]);
+  useEffect(() => {
+    let cancelled = false;
+    if (!report?.aiSummary || language === "en") {
+      startTransition(() => setTranslatedSummary(""));
+      return undefined;
+    }
+    startTransition(() => setTranslationLoading(true));
+    fetch("/api/voice/translate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: report.aiSummary, language }),
+    }).then(async (response) => {
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Translation failed");
+      if (!cancelled) startTransition(() => setTranslatedSummary(data.translatedText || ""));
+    }).catch(() => {
+      if (!cancelled) startTransition(() => setTranslatedSummary(""));
+    }).finally(() => {
+      if (!cancelled) startTransition(() => setTranslationLoading(false));
+    });
+    return () => { cancelled = true; };
+  }, [report?.aiSummary, language]);
+
+  const STATUS_CONFIG = {
+    normal:      { label: t.results.statusLabels.normal,      className: "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800", dot: "bg-emerald-500" },
+    above_range: { label: t.results.statusLabels.above_range, className: "bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800",   dot: "bg-amber-500" },
+    below_range: { label: t.results.statusLabels.below_range, className: "bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800",     dot: "bg-blue-500" },
+    unknown:     { label: t.results.statusLabels.unknown,     className: "bg-slate-100 text-slate-600 border border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700",  dot: "bg-slate-400" },
+  };
+
+  const tests = useMemo(() => (Array.isArray(report?.tests) ? report.tests : []), [report]);
   const normalCount = tests.filter((t) => t.status === "normal").length;
   const aboveCount = tests.filter((t) => t.status === "above_range").length;
   const belowCount = tests.filter((t) => t.status === "below_range").length;
@@ -47,7 +84,7 @@ export default function ReportResults({ report }) {
 
   const filteredTests = useMemo(() => {
     return tests.filter((t) => {
-      const matchesSearch = t.testName.toLowerCase().includes(search.toLowerCase());
+      const matchesSearch = String(t.testName ?? "").toLowerCase().includes(search.toLowerCase());
       const matchesStatus = statusFilter === "all" || t.status === statusFilter;
       return matchesSearch && matchesStatus;
     });
@@ -56,18 +93,18 @@ export default function ReportResults({ report }) {
   if (!report) return null;
 
   const filterButtons = [
-    { key: "all", label: `All (${tests.length})` },
-    { key: "normal", label: `Normal (${normalCount})` },
-    { key: "above_range", label: `Above (${aboveCount})` },
-    { key: "below_range", label: `Below (${belowCount})` },
-    { key: "unknown", label: `Unknown (${unknownCount})` },
+    { key: "all",         label: `${t.results.filterAll} (${tests.length})` },
+    { key: "normal",      label: `${t.results.filterNormal} (${normalCount})` },
+    { key: "above_range", label: `${t.results.filterAbove} (${aboveCount})` },
+    { key: "below_range", label: `${t.results.filterBelow} (${belowCount})` },
+    { key: "unknown",     label: `${t.results.filterUnknown} (${unknownCount})` },
   ];
 
   return (
     <div className="w-full max-w-4xl mx-auto space-y-5">
 
       {/* Header card */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
+      <div className="animate-fade-up bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div>
             <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
@@ -103,13 +140,14 @@ export default function ReportResults({ report }) {
         {report.aiSummary && (
           <div className="mt-4 p-4 bg-[#f7fbf8] dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700">
             <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">
-              Report Summary
+              {t.results.reportSummary}
             </p>
             <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-line">
-              {report.aiSummary}
+              {translationLoading ? `${t.results.translating}...` : translatedSummary || report.aiSummary}
             </p>
+            <ReadAloud text={translatedSummary || report.aiSummary} language={translatedSummary ? language : "en"} />
             <p className="mt-3 text-xs text-slate-400 dark:text-slate-500 italic">
-              Information summary only — not a medical diagnosis or advice. Consult a qualified healthcare professional.
+              {t.results.disclaimer}
             </p>
           </div>
         )}
@@ -117,14 +155,14 @@ export default function ReportResults({ report }) {
 
       {/* Search + Filter — only when tests exist */}
       {tests.length > 0 && (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-sm space-y-3">
+        <div className="animate-fade-up delay-100 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-sm space-y-3">
           <div className="relative">
             <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
             <input
               type="text"
-              placeholder="Search tests..."
+              placeholder={t.results.searchPlaceholder}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-9 pr-4 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
@@ -156,10 +194,10 @@ export default function ReportResults({ report }) {
       )}
 
       {/* Tests table */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+      <div className="animate-fade-up delay-200 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-            Test Results ({filteredTests.length}{filteredTests.length !== tests.length ? ` of ${tests.length}` : ""})
+            {t.results.testResults} ({filteredTests.length}{filteredTests.length !== tests.length ? ` ${t.results.of} ${tests.length}` : ""})
           </h3>
         </div>
 
@@ -170,16 +208,16 @@ export default function ReportResults({ report }) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
             </div>
-            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">No lab test values found</p>
+            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">{t.results.noTests}</p>
             <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-              This appears to be a narrative report rather than a lab results report. See the summary above.
+              {t.results.noTestsSub}
             </p>
           </div>
         )}
 
         {tests.length > 0 && filteredTests.length === 0 && (
           <div className="px-6 py-8 text-center">
-            <p className="text-sm text-slate-400">No tests match your search or filter.</p>
+            <p className="text-sm text-slate-400">{t.results.noMatch}</p>
           </div>
         )}
 
@@ -190,23 +228,29 @@ export default function ReportResults({ report }) {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-slate-50 dark:bg-slate-800/50">
-                    <th className="text-left px-6 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Test Name</th>
-                    <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Value</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Unit</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Reference Range</th>
-                    <th className="text-left px-6 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Status</th>
+                    <th className="text-left px-6 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{t.results.testName}</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{t.results.value}</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{t.results.unit}</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{t.results.referenceRange}</th>
+                    <th className="text-left px-6 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{t.results.status}</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{t.results.voice}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {filteredTests.map((test) => (
-                    <tr key={test.testId} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                  {filteredTests.map((test, idx) => (
+                    <tr
+                      key={test.testId}
+                      className="hover:bg-slate-50 dark:hover:bg-slate-800/30"
+                      style={{ animation: `fadeUp 0.4s cubic-bezier(0.16,1,0.3,1) ${idx * 25}ms both` }}
+                    >
                       <td className="px-6 py-3.5 font-medium text-slate-900 dark:text-white">{test.testName}</td>
                       <td className="px-4 py-3.5 text-right font-mono font-semibold text-slate-800 dark:text-slate-200">
                         {test.value !== 0 ? test.value : "—"}
                       </td>
                       <td className="px-4 py-3.5 text-slate-500 dark:text-slate-400">{test.unit || "—"}</td>
                       <td className="px-4 py-3.5 text-slate-500 dark:text-slate-400 font-mono text-xs">{test.referenceRange || "N/A"}</td>
-                      <td className="px-6 py-3.5"><StatusBadge status={test.status} /></td>
+                      <td className="px-6 py-3.5"><StatusBadge status={test.status} labels={t.results.statusLabels} /></td>
+                      <td className="px-4 py-3.5"><ReadAloud text={`${test.testName}: ${test.value} ${test.unit}. Reference range: ${test.referenceRange || "not provided"}. Status: ${test.status || "not specified"}.`} language={language} /></td>
                     </tr>
                   ))}
                 </tbody>
@@ -215,11 +259,15 @@ export default function ReportResults({ report }) {
 
             {/* Mobile cards */}
             <div className="sm:hidden divide-y divide-slate-100 dark:divide-slate-800">
-              {filteredTests.map((test) => (
-                <div key={test.testId} className="px-4 py-4 space-y-2">
+              {filteredTests.map((test, idx) => (
+                <div
+                  key={test.testId}
+                  className="px-4 py-4 space-y-2"
+                  style={{ animation: `fadeUp 0.4s cubic-bezier(0.16,1,0.3,1) ${idx * 25}ms both` }}
+                >
                   <div className="flex items-start justify-between gap-2">
                     <p className="font-medium text-slate-900 dark:text-white text-sm">{test.testName}</p>
-                    <StatusBadge status={test.status} />
+                    <StatusBadge status={test.status} labels={t.results.statusLabels} />
                   </div>
                   <div className="flex gap-4 text-sm text-slate-500 dark:text-slate-400">
                     <span>
@@ -228,8 +276,9 @@ export default function ReportResults({ report }) {
                       </span>{" "}
                       {test.unit || ""}
                     </span>
-                    <span>Ref: {test.referenceRange || "N/A"}</span>
+                    <span>{t.results.referenceShort}: {test.referenceRange || "N/A"}</span>
                   </div>
+                  <ReadAloud text={`${test.testName}: ${test.value} ${test.unit}. Reference range: ${test.referenceRange || "not provided"}. Status: ${test.status || "not specified"}.`} language={language} />
                 </div>
               ))}
             </div>
@@ -238,7 +287,7 @@ export default function ReportResults({ report }) {
       </div>
 
       <p className="text-center text-xs text-slate-400 dark:text-slate-500 pb-4">
-        MediLens extracts and simplifies report data. Always consult a qualified healthcare professional for medical advice.
+        {t.results.footer}
       </p>
     </div>
   );

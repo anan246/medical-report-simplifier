@@ -2,6 +2,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import ThemeProvider from "@/components/ThemeProvider";
+import SupportChatbot from "@/components/SupportChatbot";
+import PageReadAloud from "@/components/PageReadAloud";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -23,24 +25,15 @@ export default function RootLayout({ children }) {
   return (
     <html
       lang="en"
+      data-scroll-behavior="smooth"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <head>
-        {/* Prevent flash of wrong theme */}
+        {/* Prevent flash of wrong theme on initial load */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `
-              (function() {
-                try {
-                  var stored = localStorage.getItem('medilens-theme');
-                  var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                  if (stored === 'dark' || (!stored && prefersDark)) {
-                    document.documentElement.classList.add('dark');
-                  }
-                } catch(e) {}
-              })();
-            `,
+            __html: `(function(){try{var s=localStorage.getItem('medilens-theme-preference')||localStorage.getItem('medilens-theme')||'system';var d=window.matchMedia('(prefers-color-scheme: dark)').matches;if(s==='dark'||(s==='system'&&d)){document.documentElement.classList.add('dark');}}catch(e){}})();`,
           }}
         />
       </head>
@@ -48,6 +41,8 @@ export default function RootLayout({ children }) {
         <ThemeProvider>
           <Navbar />
           <div className="flex-1">{children}</div>
+          <PageReadAloud />
+          <SupportChatbot />
         </ThemeProvider>
       </body>
     </html>

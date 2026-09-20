@@ -2,30 +2,48 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useParams } from "next/navigation";
+import { useTheme } from "@/components/ThemeProvider";
+import { getT } from "@/lib/i18n";
 
-function StatusBadge({ status }) {
+function StatusBadge({ status, labels }) {
   const isWithin = status === "Within Range";
   if (!status) return <span className="text-sm text-slate-400 dark:text-slate-500">—</span>;
   return (
-    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${
+    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
       isWithin
-        ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
-        : "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400"
+        ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400"
+        : "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400"
     }`}>
-      {isWithin ? "✓ Within Range" : "⚠ Outside Range"}
+      {isWithin ? `✓ ${labels.withinRange}` : `⚠ ${labels.outsideRange}`}
     </span>
   );
 }
 
 function Pulse({ className }) {
-  return <div className={`bg-slate-200 dark:bg-slate-700 rounded animate-pulse ${className}`} />;
+  return <div className={`bg-slate-200 dark:bg-slate-700 rounded-xl animate-pulse ${className}`} />;
+}
+
+function StatCard({ label, value, color, icon }) {
+  return (
+    <div className={`relative overflow-hidden rounded-2xl p-5 shadow-sm border ${color.border} ${color.bg}`}>
+      <div className={`absolute -top-4 -right-4 w-20 h-20 rounded-full opacity-20 ${color.blob}`} />
+      <p className={`text-xs font-semibold uppercase tracking-wider ${color.label}`}>{label}</p>
+      <div className="flex items-end gap-2 mt-2">
+        <p className={`text-4xl font-bold ${color.value}`}>{value}</p>
+        <span className="text-2xl mb-0.5">{icon}</span>
+      </div>
+    </div>
+  );
 }
 
 export default function ReportTestsPage() {
   const { id } = useParams();
+  const { language } = useTheme();
+  const t = getT(language);
   const [report, setReport] = useState(null);
-  const [status, setStatus] = useState("loading"); // loading | error | notfound | ok
+  const [status, setStatus] = useState("loading");
   const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
@@ -56,82 +74,84 @@ export default function ReportTestsPage() {
   const outsideCount = tests.filter((t) => t.status === "Outside Range").length;
 
   return (
-    <main className="min-h-screen bg-[#f7fbf8] dark:bg-slate-950 px-4 py-10 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto space-y-8">
+    <main className="min-h-screen bg-slate-50 dark:bg-slate-950 px-4 py-10 sm:px-6 lg:px-8">
+      <div className="max-w-4xl mx-auto space-y-6">
 
         {/* Back link */}
         <Link
-          href="/dashboard"
-          className="inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-emerald-700 dark:text-slate-300 dark:hover:text-emerald-400 transition-colors"
+          href="/report-dashboard"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-emerald-700 dark:text-slate-300 dark:hover:text-emerald-400 transition-colors"
         >
-          ← Back to Dashboard
+          ← {t.results.backToReports}
         </Link>
+
+        {/* Hero banner */}
+        <div className="relative overflow-hidden rounded-3xl h-48 sm:h-56 shadow-xl">
+          <Image
+            src="https://images.unsplash.com/photo-1631549916768-4119b2e5f926?w=1200&q=80"
+            alt="Medical test tubes and lab equipment"
+            fill
+            className="object-cover object-center"
+            priority
+            unoptimized
+          />
+          <div className="absolute inset-0 bg-linear-to-r from-teal-900/85 via-emerald-900/60 to-transparent" />
+          <div className="absolute inset-0 flex items-end px-8 pb-7">
+            {status === "ok" && report ? (
+              <div>
+                <p className="text-emerald-300 text-xs font-semibold uppercase tracking-widest mb-1">{report.reportType && report.reportType !== "pending" ? report.reportType : "Medical Report"}</p>
+                <h1 className="text-2xl sm:text-3xl font-bold text-white drop-shadow">{report.reportName}</h1>
+                <p className="text-emerald-100 text-sm mt-1">📅 {report.date}</p>
+              </div>
+            ) : (
+              <div>
+                <p className="text-emerald-300 text-xs font-semibold uppercase tracking-widest mb-1">MediLens</p>
+                <h1 className="text-2xl sm:text-3xl font-bold text-white drop-shadow">{t.results.testResults}</h1>
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* Loading */}
         {status === "loading" && (
-          <div className="space-y-6">
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm flex items-start gap-4">
-              <Pulse className="flex-shrink-0 w-10 h-10 rounded-lg" />
-              <div className="space-y-2 flex-1">
-                <Pulse className="h-3 w-16" />
-                <Pulse className="h-5 w-56" />
-                <Pulse className="h-3 w-32" />
-              </div>
+          <div className="space-y-5">
+            <div className="grid grid-cols-3 gap-4">
+              {[1, 2, 3].map((i) => <Pulse key={i} className="h-24" />)}
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm space-y-2">
-                  <Pulse className="h-3 w-24" />
-                  <Pulse className="h-8 w-12" />
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm overflow-hidden">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="px-5 py-4 flex gap-4 border-b border-slate-100 dark:border-slate-800">
+                  <Pulse className="h-4 flex-1" />
+                  <Pulse className="h-4 w-20" />
+                  <Pulse className="h-4 w-24" />
+                  <Pulse className="h-4 w-20" />
                 </div>
               ))}
-            </div>
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden">
-              <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800">
-                <Pulse className="h-4 w-28" />
-              </div>
-              <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="px-5 py-4 grid grid-cols-4 gap-4">
-                    <Pulse className="h-4 w-full" />
-                    <Pulse className="h-4 w-3/4" />
-                    <Pulse className="h-4 w-full" />
-                    <Pulse className="h-4 w-1/2" />
-                  </div>
-                ))}
-              </div>
             </div>
           </div>
         )}
 
         {/* Not found */}
         {status === "notfound" && (
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-10 shadow-sm text-center space-y-3">
-            <p className="text-3xl">🔍</p>
-            <p className="font-medium text-slate-900 dark:text-white">Report not found.</p>
-            <Link
-              href="/dashboard"
-              className="inline-block text-sm text-emerald-700 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300"
-            >
-              ← Back to Dashboard
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-12 shadow-sm text-center space-y-4">
+            <div className="text-6xl">🔍</div>
+            <p className="font-semibold text-slate-900 dark:text-white text-lg">{t.results.reportNotFound}</p>
+            <Link href="/report-dashboard" className="inline-block text-sm font-medium text-emerald-700 hover:text-emerald-800 dark:text-emerald-400">
+              ← {t.results.backToReports}
             </Link>
           </div>
         )}
 
         {/* Error */}
         {status === "error" && (
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-8 shadow-sm text-center space-y-3">
-            <p className="font-medium text-slate-900 dark:text-white">
-              Unable to load this report.
-            </p>
-            <p className="text-sm text-slate-600 dark:text-slate-300">
-              There was a problem retrieving the report data.
-            </p>
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-10 shadow-sm text-center space-y-4">
+            <div className="text-5xl">😕</div>
+            <p className="font-semibold text-slate-900 dark:text-white">{t.results.loadReportError}</p>
             <button
               onClick={() => setRetryCount((n) => n + 1)}
-              className="px-4 py-2 text-sm font-medium rounded-lg bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 text-white transition-colors"
+              className="px-5 py-2.5 text-sm font-semibold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white transition-all hover:scale-105 active:scale-95 shadow-md"
             >
-              Try Again
+              {t.results.tryAgain}
             </button>
           </div>
         )}
@@ -139,75 +159,39 @@ export default function ReportTestsPage() {
         {/* Loaded */}
         {status === "ok" && report && (
           <>
-            {/* Report info card */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm flex items-start gap-4">
-              <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-center text-emerald-700 dark:text-emerald-400 text-lg">
-                🩺
-              </div>
-              <div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide font-medium">
-                  Report
-                </p>
-                <h1 className="text-base font-semibold text-slate-900 dark:text-white mt-0.5">
-                  {report.reportName}
-                </h1>
-                {report.reportType && report.reportType !== "pending" && (
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    {report.reportType}
-                  </p>
-                )}
-                <p className="text-sm text-slate-600 dark:text-slate-300 mt-0.5">
-                  {report.date}
-                </p>
-              </div>
-            </div>
-
-            {/* Summary cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
-                <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide font-medium">
-                  Total Tests
-                </p>
-                <p className="mt-2 text-3xl font-bold text-slate-900 dark:text-white">
-                  {tests.length}
-                </p>
-              </div>
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
-                <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide font-medium">
-                  Within Range
-                </p>
-                <p className="mt-2 text-3xl font-bold text-emerald-700 dark:text-emerald-400">
-                  {withinCount}
-                </p>
-              </div>
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
-                <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide font-medium">
-                  Outside Range
-                </p>
-                <p className="mt-2 text-3xl font-bold text-amber-600 dark:text-amber-400">
-                  {outsideCount}
-                </p>
-              </div>
+            {/* Summary stat cards */}
+            <div className="grid grid-cols-3 gap-4">
+              <StatCard label={`${t.results.total} ${t.results.testResults}`} value={tests.length} icon="🧪"
+                color={{ bg: "bg-white dark:bg-slate-900", border: "border-slate-200 dark:border-slate-800", blob: "bg-slate-400", label: "text-slate-500 dark:text-slate-400", value: "text-slate-900 dark:text-white" }}
+              />
+              <StatCard label={t.results.withinRange} value={withinCount} icon="✅"
+                color={{ bg: "bg-emerald-50 dark:bg-emerald-950/30", border: "border-emerald-200 dark:border-emerald-900", blob: "bg-emerald-400", label: "text-emerald-600 dark:text-emerald-400", value: "text-emerald-700 dark:text-emerald-400" }}
+              />
+              <StatCard label={t.results.outsideRange} value={outsideCount} icon="⚠️"
+                color={{ bg: "bg-amber-50 dark:bg-amber-950/30", border: "border-amber-200 dark:border-amber-900", blob: "bg-amber-400", label: "text-amber-600 dark:text-amber-400", value: "text-amber-700 dark:text-amber-400" }}
+              />
             </div>
 
             {/* Test results table */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden">
-              <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800">
-                <h2 className="text-base font-semibold text-slate-900 dark:text-white">
-                  Test Results
-                </h2>
-                {tests.length > 0 && (
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    Click a test to view details and AI explanation.
-                  </p>
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm overflow-hidden border border-slate-100 dark:border-slate-800">
+              <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                <div>
+                  <h2 className="font-semibold text-slate-900 dark:text-white">{t.results.testResults}</h2>
+                  {tests.length > 0 && (
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t.results.detailsHint} ✨</p>
+                  )}
+                </div>
+                {outsideCount > 0 && (
+                  <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400">
+                    {outsideCount} {t.results.flagged}
+                  </span>
                 )}
               </div>
 
               {tests.length === 0 ? (
-                <div className="px-5 py-10 text-center">
-                  <p className="text-sm text-slate-600 dark:text-slate-300">
-                    Test results are not available for this report yet.
-                  </p>
+                <div className="px-6 py-12 text-center space-y-2">
+                  <div className="text-4xl">📭</div>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">{t.results.noResults}</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
@@ -215,37 +199,30 @@ export default function ReportTestsPage() {
                     <thead>
                       <tr className="bg-slate-50 dark:bg-slate-800/50">
                         {["Test", "Result", "Reference Range", "Status"].map((h) => (
-                          <th
-                            key={h}
-                            className="text-left px-5 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide"
-                          >
-                            {h}
-                          </th>
+                          <th key={h} className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                       {tests.map((test) => (
-                        <tr
-                          key={test.id}
-                          className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors"
-                        >
-                          <td className="px-5 py-4 font-medium whitespace-nowrap">
+                        <tr key={test.id} className="hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20 transition-colors group">
+                          <td className="px-5 py-4 font-medium">
                             <Link
                               href={`/reports/${report.id}/tests/${test.id}`}
-                              className="text-slate-900 dark:text-white hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
+                              className="text-slate-900 dark:text-white group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors flex items-center gap-1.5"
                             >
                               {test.testName}
+                              <span className="opacity-0 group-hover:opacity-100 transition-opacity text-xs">→</span>
                             </Link>
                           </td>
-                          <td className="px-5 py-4 text-slate-600 dark:text-slate-300 whitespace-nowrap">
-                            {test.value} {test.unit}
+                          <td className="px-5 py-4 text-slate-700 dark:text-slate-300 font-mono whitespace-nowrap">
+                            {test.value} <span className="text-slate-400 font-sans text-xs">{test.unit}</span>
                           </td>
-                          <td className="px-5 py-4 text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                          <td className="px-5 py-4 text-slate-500 dark:text-slate-400 whitespace-nowrap">
                             {test.referenceRange || "—"}
                           </td>
                           <td className="px-5 py-4 whitespace-nowrap">
-                            <StatusBadge status={test.status} />
+                            <StatusBadge status={test.status} labels={t.results} />
                           </td>
                         </tr>
                       ))}
@@ -257,11 +234,9 @@ export default function ReportTestsPage() {
           </>
         )}
 
-        {/* Disclaimer */}
-        <p className="text-xs text-slate-500 dark:text-slate-400 text-center pb-4">
-          This dashboard presents information extracted from your medical report and is not a medical diagnosis.
+        <p className="text-xs text-slate-400 dark:text-slate-500 text-center pb-4">
+          {t.results.disclaimer}
         </p>
-
       </div>
     </main>
   );

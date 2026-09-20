@@ -1,37 +1,37 @@
 import { NextResponse } from "next/server";
-import { connectDB } from "../../../lib/mongodb";
-import Report from "../../../models/Report";
-import { normalizeReportSummary } from "../../../lib/reportAdapter";
+import { connectDB } from "@/lib/mongodb";
+import Report from "@/models/Report";
+import { normalizeReportSummary } from "@/lib/reportAdapter";
+import { getAuthenticatedUser } from "@/lib/auth";
+import { privateJson } from "@/lib/apiResponse";
 
 export async function GET(request) {
   try {
+    const user = getAuthenticatedUser(request);
+    if (!user) {
+      return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+    }
+
     await connectDB();
 
-    // Optional user filtering.
-    // Later, this can be replaced with the authenticated user's ID.
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId") ?? null;
-
-    const query = userId ? { userId } : {};
-
-    // Fetch lightweight report information.
-    // The tests field is included so the adapter can calculate the test count.
-    const docs = await Report.find(query)
+    const docs = await Report.find({ userId: user.userId })
       .select(
-        "_id reportId userId reportName reportType reportDate createdAt tests"
+        "_id reportId reportName reportType reportDate createdAt tests"
       )
       .sort({ createdAt: -1 })
       .lean();
 
-    // Convert database documents into the format expected by the frontend.
     const reports = docs.map(normalizeReportSummary).filter(Boolean);
 
-    return NextResponse.json(reports);
-  } catch (err) {
-    console.error("[GET /api/reports]", err);
+    return privateJson(reports, { status: 200 });
+  } catch (error) {
+    console.error("[GET /api/reports]", error);
 
     return NextResponse.json(
-      { error: "Failed to load reports." },
+      {
+        error: "Failed to fetch reports",
+        details: error.message,
+      },
       { status: 500 }
     );
   }
