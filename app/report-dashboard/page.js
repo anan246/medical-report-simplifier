@@ -114,7 +114,12 @@ if (!res.ok) {
   }, [retryCount, router]);
 
   return (
-    <main className="min-h-screen bg-slate-50 dark:bg-slate-950 px-4 py-10 sm:px-6 lg:px-8">
+    <main
+  className="min-h-screen bg-cover bg-center bg-fixed relative px-4 py-10 sm:px-6 lg:px-8"
+  style={{
+    backgroundImage: "url('/images/report-dashboard.jpg')",
+  }}
+>
       <div className="max-w-4xl mx-auto space-y-8">
 
         {/* Hero banner */}
@@ -128,7 +133,7 @@ if (!res.ok) {
             unoptimized
           />
 
-          <div className="absolute inset-0 bg-gradient-to-r from-emerald-900/80 via-teal-900/60 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-emerald-900/60 via-teal-900/60 to-transparent" />
 
           <div className="absolute inset-0 flex items-center px-8">
             <div>

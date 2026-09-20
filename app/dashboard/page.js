@@ -31,7 +31,7 @@ export default function DashboardPage() {
   ];
 
   return (
-    <main className="min-h-screen bg-[#f6fbf7] text-slate-900">
+    <main className="min-h-screen bg-[#f6fbf7] text-slate-900 bg-medical-subtle">
 
       {/* =====================================================
           HERO — ONLY THIS SECTION HAS BEEN CHANGED
@@ -720,7 +720,7 @@ function ComparisonRow({
   change,
 }) {
   return (
-    <div className="mb-3 rounded-xl border border-slate-100 bg-slate-50 p-4 last:mb-0">
+    <div className="mb-3 rounded-xl border border-slate-100 bg-slate-50 p-4 last:mb-0 transition-all hover:bg-emerald-50/40 hover:border-emerald-100 hover:shadow-xs">
 
       <div className="flex items-center justify-between">
 
