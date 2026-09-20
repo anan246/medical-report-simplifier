@@ -3,9 +3,9 @@ import { v4 as uuidv4 } from "uuid";
 import { readFile } from "fs/promises";
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const PRIMARY_MODEL = process.env.GEMINI_MODEL || "gemini-3.6-flash";
+const PRIMARY_MODEL = process.env.GEMINI_MODEL || "gemini-3.5-flash";
 const FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || "gemini-3.5-flash-lite";
-const LAST_RESORT_MODEL = process.env.GEMINI_LAST_RESORT_MODEL || "gemini-flash-lite-latest";
+const LAST_RESORT_MODEL = process.env.GEMINI_LAST_RESORT_MODEL || "gemini-3.5-flash-lite";
 
 // Don't throw at module load — throw lazily inside the function so the
 // server starts even without the key (other routes still work).

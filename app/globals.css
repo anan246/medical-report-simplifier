@@ -47,6 +47,26 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* The dashboard predates the shared theme classes. Keep its existing design while
+   allowing the global Settings theme choice to cover every section and card. */
+.dark .dashboard-page {
+  background: #020817;
+  color: #f8fafc;
+}
+.dark .dashboard-page .bg-white,
+.dark .dashboard-page [class*="bg-[#f6fbf7]"] {
+  background-color: #0f172a !important;
+}
+.dark .dashboard-page .text-slate-900,
+.dark .dashboard-page .text-slate-800,
+.dark .dashboard-page .text-slate-700 {
+  color: #f1f5f9;
+}
+.dark .dashboard-page .text-slate-600,
+.dark .dashboard-page .text-slate-500 {
+  color: #94a3b8;
+}
+
 /* ── Scrollbar ── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -244,6 +264,7 @@ body {
   background-size: 300% 300%;
   animation: gradientShift 8s ease infinite;
 }
+
 
 /* Blob glow */
 .blob-glow {

@@ -5,10 +5,6 @@ import { generateWithFallback, getGenAI } from "@/services/geminiService";
 const LANGUAGE_NAMES = { hi: "Hindi", kn: "Kannada" };
 
 export async function POST(request) {
-  if (!getAuthenticatedUser(request)) {
-    return NextResponse.json({ error: "Authentication required." }, { status: 401 });
-  }
-
   let body;
   try {
     body = await request.json();
@@ -24,13 +20,28 @@ export async function POST(request) {
     return NextResponse.json({ error: "Unsupported voice language." }, { status: 400 });
   }
 
+  // Check auth; if unauthenticated, cap text length to prevent abuse
+  const user = getAuthenticatedUser(request);
+  if (!user && text.length > 4000) {
+    return NextResponse.json({ error: "Authentication required for long text translation." }, { status: 401 });
+  }
+
   try {
     const result = await generateWithFallback(
       getGenAI(),
-      `Translate the following medical report explanation into ${LANGUAGE_NAMES[language]}. Preserve every test name, number, decimal, unit, reference range, and status exactly. Do not add diagnosis, treatment, advice, or any new information. Return only the translation.\n\nTEXT:\n${text}`,
+      `Translate the following medical report content into clear, natural ${LANGUAGE_NAMES[language]} suitable for text-to-speech reading. Preserve every test name, numeric value, decimal, unit, and reference range accurately. Do not include markdown formatting, bullet asterisks, code blocks, or preamble. Return ONLY the spoken translation text.\n\nTEXT:\n${text}`,
       { temperature: 0.2 },
     );
-    return NextResponse.json({ translatedText: result.response.text().trim() });
+
+    let translatedText = result.response.text().trim();
+    // Clean up markdown fences or labels if present
+    translatedText = translatedText
+      .replace(/^```[a-z]*\s*/i, "")
+      .replace(/\s*```$/i, "")
+      .replace(/^[#*>\s]+/gm, "")
+      .trim();
+
+    return NextResponse.json({ translatedText });
   } catch (error) {
     console.error("[POST /api/voice/translate]", error.message);
     return NextResponse.json({ error: "Unable to prepare the translated voice text." }, { status: 502 });

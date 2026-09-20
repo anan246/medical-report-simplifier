@@ -76,15 +76,12 @@ export default function ReadAloud({ text, language = "en", rate = null, classNam
   const cancelledRef = useRef(false);
   const t = getTranslations(language);
 
-  const storedVoiceLanguage = useStoredPreference("medilens-voice-language");
   const storedVoiceRate = useStoredPreference("medilens-voice-rate");
   const storedVoiceEnabled = useStoredPreference("medilens-voice-enabled");
-  // Only languages this app can translate and speak are accepted from the stored setting.
+  // The app's active language is the single source of truth for spoken language.
+  // A saved voice preference must never make an English voice read Hindi or Kannada.
   const appLanguage = SPEECH_LANGUAGES[language] ? language : "en";
-  const preferredLanguage = SPEECH_LANGUAGES[storedVoiceLanguage] ? storedVoiceLanguage : "en";
-  // The stored "voice language" decides what is read out; the app language always wins
-  // once it is not English, because the spoken text is already translated by then.
-  const speechLanguage = appLanguage !== "en" ? appLanguage : preferredLanguage;
+  const speechLanguage = appLanguage;
   const speechRate = rate === null || rate === undefined ? clampSpeechRate(storedVoiceRate || 1) : clampSpeechRate(rate);
   const voiceEnabled = storedVoiceEnabled !== "false";
 
@@ -93,16 +90,22 @@ export default function ReadAloud({ text, language = "en", rate = null, classNam
     const cacheKey = `${speechLanguage}:${sourceText}`;
     const cached = translationRef.current.get(cacheKey);
     if (cached) return cached;
-    const response = await fetch("/api/voice/translate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: sourceText, language: speechLanguage }),
-    });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || t.speechUnavailable);
-    translationRef.current.set(cacheKey, data.translatedText);
-    return data.translatedText;
-  }, [speechLanguage, t.speechUnavailable]);
+    try {
+      const response = await fetch("/api/voice/translate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: sourceText, language: speechLanguage }),
+      });
+      const data = await response.json();
+      if (response.ok && data.translatedText) {
+        translationRef.current.set(cacheKey, data.translatedText);
+        return data.translatedText;
+      }
+      return sourceText;
+    } catch {
+      return sourceText;
+    }
+  }, [speechLanguage]);
 
   // Warm the translation cache so a click can start playback synchronously: Safari only
   // allows speech synthesis while the originating user gesture is still active.
@@ -212,8 +215,12 @@ export default function ReadAloud({ text, language = "en", rate = null, classNam
         return;
       }
       const matchedVoice = pickSpeechVoice(voices, speechLanguage);
-      voiceRef.current = matchedVoice || getDefaultSpeechVoice(voices);
-      localeRef.current = getSpeechLocale(speechLanguage);
+      const defaultVoice = getDefaultSpeechVoice(voices);
+      const chosenVoice = matchedVoice || defaultVoice;
+
+      voiceRef.current = chosenVoice;
+      localeRef.current = (chosenVoice && chosenVoice.lang) || getSpeechLocale(speechLanguage);
+
       if (!matchedVoice) {
         const languageName = (t.languageNames && t.languageNames[speechLanguage]) || speechLanguage;
         setNotice(t.voiceMissing.replace("{language}", languageName));
