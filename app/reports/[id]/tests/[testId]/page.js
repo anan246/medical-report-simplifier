@@ -45,9 +45,22 @@ function AICard({ icon, label, children }) {
   );
 }
 
-function ExplanationSection({ reportId, testId }) {
+function ExplanationSection({ reportId, testId, test }) {
   const [aiStatus, setAiStatus] = useState("idle");
   const [explanation, setExplanation] = useState(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [pdfBlobUrl, setPdfBlobUrl] = useState(null);
+  const [pdfError, setPdfError] = useState(null);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+
+  // Clean up any generated PDF blob URL on unmount
+  useEffect(() => {
+    return () => {
+      if (pdfBlobUrl) {
+        URL.revokeObjectURL(pdfBlobUrl);
+      }
+    };
+  }, [pdfBlobUrl]);
 
   const fetchExplanation = useCallback(async () => {
     setAiStatus("loading");
@@ -66,6 +79,47 @@ function ExplanationSection({ reportId, testId }) {
       setAiStatus("error");
     }
   }, [reportId, testId]);
+
+  const handleGeneratePdf = async () => {
+    setPdfLoading(true);
+    setPdfError(null);
+    try {
+      const res = await fetch(`/api/reports/${reportId}/tests/${testId}/pdf`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ explanation }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || "Failed to generate PDF summary.");
+      }
+
+      const blob = await res.blob();
+      if (pdfBlobUrl) {
+        URL.revokeObjectURL(pdfBlobUrl);
+      }
+      const url = URL.createObjectURL(blob);
+      setPdfBlobUrl(url);
+      setShowPreviewModal(true);
+    } catch (err) {
+      console.error("PDF generation error:", err);
+      setPdfError(err.message || "Failed to generate PDF summary. Please try again.");
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
+  const handleDownloadPdf = () => {
+    if (!pdfBlobUrl) return;
+    const link = document.createElement("a");
+    link.href = pdfBlobUrl;
+    const safeName = (test?.testName || "test").replace(/[^a-zA-Z0-9_-]/g, "_");
+    link.download = `MediLens_${safeName}_Summary.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   if (aiStatus === "idle") {
     return (
@@ -88,7 +142,7 @@ function ExplanationSection({ reportId, testId }) {
           </div>
           <button
             onClick={fetchExplanation}
-            className="self-start px-5 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/25 text-white font-semibold text-sm transition-all hover:scale-[1.03] active:scale-[0.97] backdrop-blur-sm"
+            className="self-start px-5 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/25 text-white font-semibold text-sm transition-all hover:scale-[1.03] active:scale-[0.97] backdrop-blur-sm cursor-pointer"
           >
             ✨ Explain This Result
           </button>
@@ -143,7 +197,7 @@ function ExplanationSection({ reportId, testId }) {
         </div>
         <button
           onClick={fetchExplanation}
-          className="w-full py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:border-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-400 transition-all"
+          className="w-full py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:border-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-400 transition-all cursor-pointer"
         >
           Try Again
         </button>
@@ -152,35 +206,138 @@ function ExplanationSection({ reportId, testId }) {
   }
 
   return (
-    <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-md overflow-hidden">
-      {/* Header with photo strip */}
-      <div className="relative h-16 overflow-hidden">
-        <Image
-          src="https://images.unsplash.com/photo-1507413245164-6160d8298b31?w=900&q=80"
-          alt="AI analysis"
-          fill
-          className="object-cover object-center"
-          unoptimized
-        />
-        <div className="absolute inset-0 bg-slate-900/75" />
-        <div className="absolute inset-0 flex items-center px-6 gap-3">
-          <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-lg">🤖</div>
-          <div>
-            <h3 className="font-semibold text-white text-sm">AI Explanation</h3>
-            <p className="text-slate-300 text-xs">Powered by Gemini</p>
+    <>
+      <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-md overflow-hidden">
+        {/* Header with photo strip */}
+        <div className="relative h-16 overflow-hidden">
+          <Image
+            src="https://images.unsplash.com/photo-1507413245164-6160d8298b31?w=900&q=80"
+            alt="AI analysis"
+            fill
+            className="object-cover object-center"
+            unoptimized
+          />
+          <div className="absolute inset-0 bg-slate-900/75" />
+          <div className="absolute inset-0 flex items-center px-6 gap-3">
+            <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-lg">🤖</div>
+            <div>
+              <h3 className="font-semibold text-white text-sm">AI Explanation</h3>
+              <p className="text-slate-300 text-xs">Powered by Gemini</p>
+            </div>
           </div>
         </div>
+        <div className="p-6 space-y-3">
+          {explanation.summary && <AICard icon="💡" label="Simple Summary">{explanation.summary}</AICard>}
+          {explanation.whatItMeasures && <AICard icon="🔬" label="What This Test Measures">{explanation.whatItMeasures}</AICard>}
+          {explanation.resultMeaning && <AICard icon="📊" label="Understanding Your Result">{explanation.resultMeaning}</AICard>}
+          {explanation.referenceRangeNote && <AICard icon="📏" label="Reference Range Note">{explanation.referenceRangeNote}</AICard>}
+          
+          <p className="text-xs text-slate-400 dark:text-slate-500 pt-2 border-t border-slate-100 dark:border-slate-800">
+            AI-generated explanations are for educational purposes only and should not replace advice from a qualified healthcare professional.
+          </p>
+
+          {/* Action Row - Get Summary as PDF */}
+          <div className="pt-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+              <span className="text-base">📄</span>
+              <span>Export or save this test explanation</span>
+            </div>
+            <button
+              onClick={handleGeneratePdf}
+              disabled={pdfLoading}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-70 text-white text-xs sm:text-sm font-semibold shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+              id="get-summary-pdf-btn"
+            >
+              {pdfLoading ? (
+                <>
+                  <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                  </svg>
+                  <span>Generating PDF...</span>
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <span>Get Summary as PDF</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          {pdfError && (
+            <p className="text-xs text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 p-2.5 rounded-xl border border-rose-200 dark:border-rose-900 text-center">
+              {pdfError}
+            </p>
+          )}
+        </div>
       </div>
-      <div className="p-6 space-y-3">
-        {explanation.summary && <AICard icon="💡" label="Simple Summary">{explanation.summary}</AICard>}
-        {explanation.whatItMeasures && <AICard icon="🔬" label="What This Test Measures">{explanation.whatItMeasures}</AICard>}
-        {explanation.resultMeaning && <AICard icon="📊" label="Understanding Your Result">{explanation.resultMeaning}</AICard>}
-        {explanation.referenceRangeNote && <AICard icon="📏" label="Reference Range Note">{explanation.referenceRangeNote}</AICard>}
-        <p className="text-xs text-slate-400 dark:text-slate-500 pt-2 border-t border-slate-100 dark:border-slate-800">
-          AI-generated explanations are for educational purposes only and should not replace advice from a qualified healthcare professional.
-        </p>
-      </div>
-    </div>
+
+      {/* Interactive PDF Preview Modal */}
+      {showPreviewModal && pdfBlobUrl && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
+          <div className="relative w-full max-w-4xl h-[88vh] flex flex-col bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden animate-scale-in">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/80">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-lg shadow-sm">
+                  📄
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white">PDF Summary Preview</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {test?.testName ? `${test.testName} summary document` : "MediLens generated summary"}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowPreviewModal(false)}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                aria-label="Close Preview"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal PDF Viewer Body */}
+            <div className="flex-1 p-3 sm:p-4 bg-slate-100 dark:bg-slate-950 min-h-0">
+              <iframe
+                src={pdfBlobUrl}
+                title="Medical Test PDF Summary Preview"
+                className="w-full h-full rounded-2xl border border-slate-200 dark:border-slate-800 shadow-inner bg-white"
+              />
+            </div>
+
+            {/* Modal Footer with Actions */}
+            <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-3 px-6 py-4 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
+              <p className="text-xs text-slate-500 dark:text-slate-400 text-center sm:text-left">
+                Previewing generated PDF. Click &quot;Download PDF&quot; to save this document to your device.
+              </p>
+              <div className="flex items-center justify-end gap-3">
+                <button
+                  onClick={() => setShowPreviewModal(false)}
+                  className="px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 transition-all cursor-pointer"
+                >
+                  Close
+                </button>
+                <button
+                  onClick={handleDownloadPdf}
+                  className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs sm:text-sm font-semibold shadow-md transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+                  id="download-pdf-btn"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  <span>Download PDF</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -342,7 +499,7 @@ export default function TestDetailPage() {
         )}
 
         {/* AI Explanation */}
-        <ExplanationSection reportId={id} testId={testId} />
+        <ExplanationSection reportId={id} testId={testId} test={test} />
 
         <p className="text-xs text-slate-400 dark:text-slate-500 text-center pb-4">
           For educational purposes only — not a medical diagnosis.
