@@ -144,7 +144,7 @@ function ExplanationSection({ reportId, testId, test }) {
             onClick={fetchExplanation}
             className="self-start px-5 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/25 text-white font-semibold text-sm transition-all hover:scale-[1.03] active:scale-[0.97] backdrop-blur-sm cursor-pointer"
           >
-            ✨ Explain This Result
+             Explain This Result
           </button>
         </div>
       </div>
