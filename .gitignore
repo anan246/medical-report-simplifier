@@ -37,6 +37,7 @@ yarn-error.log*
 # uploaded files
 /public/uploads/*
 !/public/uploads/.gitkeep
+/storage/uploads/*
 
 # vercel
 .vercel
