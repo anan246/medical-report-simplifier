@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/auth";
-import { getGeminiModel } from "@/lib/gemini";
+import { generateWithFallback, getGenAI } from "@/services/geminiService";
 
 const LANGUAGE_NAMES = { hi: "Hindi", kn: "Kannada" };
 
@@ -25,8 +25,11 @@ export async function POST(request) {
   }
 
   try {
-    const model = getGeminiModel();
-    const result = await model.generateContent(`Translate the following medical report explanation into ${LANGUAGE_NAMES[language]}. Preserve every test name, number, decimal, unit, reference range, and status exactly. Do not add diagnosis, treatment, advice, or any new information. Return only the translation.\n\nTEXT:\n${text}`);
+    const result = await generateWithFallback(
+      getGenAI(),
+      `Translate the following medical report explanation into ${LANGUAGE_NAMES[language]}. Preserve every test name, number, decimal, unit, reference range, and status exactly. Do not add diagnosis, treatment, advice, or any new information. Return only the translation.\n\nTEXT:\n${text}`,
+      { temperature: 0.2 },
+    );
     return NextResponse.json({ translatedText: result.response.text().trim() });
   } catch (error) {
     console.error("[POST /api/voice/translate]", error.message);
