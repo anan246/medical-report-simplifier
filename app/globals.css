@@ -322,3 +322,42 @@ body {
   border: 2px solid #10b981;
   animation: borderGlow 1.5s ease-in-out infinite;
 }
+
+/* ── Subtle Medical Background Pattern ── */
+.bg-medical-subtle {
+  position: relative;
+}
+.bg-medical-subtle::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("/medical-bg.svg");
+  background-repeat: repeat;
+  background-size: 240px 240px;
+  opacity: 0.35;
+  pointer-events: none;
+  z-index: 0;
+}
+.dark .bg-medical-subtle::before {
+  opacity: 0.12;
+}
+
+/* ── Subtle Ambient Glow Elements ── */
+.glow-ambient-emerald {
+  position: absolute;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.12) 0%, rgba(16, 185, 129, 0) 70%);
+  pointer-events: none;
+}
+
+/* ── Accessibility: Reduced Motion ── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

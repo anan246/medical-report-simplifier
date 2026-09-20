@@ -373,11 +373,17 @@ export default function TestDetailPage() {
   const description = getDescription(test?.testName);
   const isWithin = test?.status === "Within Range";
 
-  const mainClass = "min-h-screen bg-slate-50 dark:bg-slate-950 px-4 py-10 sm:px-6 lg:px-8";
+const mainClass =
+  "min-h-screen bg-cover bg-center bg-fixed px-4 py-10 sm:px-6 lg:px-8";
 
   if (status === "notfound") {
     return (
-      <main className={mainClass}>
+      <main
+  className={mainClass}
+  style={{
+    backgroundImage: "url('/images/report-dashboard.jpg')",
+  }}
+>
         <div className="max-w-2xl mx-auto text-center space-y-4 pt-20">
           <div className="text-6xl">🔍</div>
           <h1 className="text-xl font-bold text-slate-900 dark:text-white">Test not found</h1>
@@ -391,7 +397,12 @@ export default function TestDetailPage() {
 
   if (status === "error") {
     return (
-      <main className={mainClass}>
+     <main
+  className={mainClass}
+  style={{
+    backgroundImage: "url('/images/report-dashboard.jpg')",
+  }}
+>
         <div className="max-w-2xl mx-auto space-y-6">
           <Link href="/report-dashboard" className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-emerald-700 dark:text-slate-300 dark:hover:text-emerald-400 transition-colors">
             ← Back to My Reports
@@ -410,7 +421,12 @@ export default function TestDetailPage() {
 
   if (status === "loading") {
     return (
-      <main className={mainClass}>
+      <main
+  className={mainClass}
+  style={{
+    backgroundImage: "url('/images/report-dashboard.jpg')",
+  }}
+>
         <div className="max-w-2xl mx-auto space-y-6">
           <Pulse className="h-4 w-36" />
           <Pulse className="h-44 w-full rounded-3xl" />
@@ -423,7 +439,12 @@ export default function TestDetailPage() {
   }
 
   return (
-    <main className={mainClass}>
+    <main
+  className={mainClass}
+  style={{
+    backgroundImage: "url('/images/report-dashboard.jpg')",
+  }}
+>
       <div className="max-w-2xl mx-auto space-y-6">
 
         {/* Back nav */}
